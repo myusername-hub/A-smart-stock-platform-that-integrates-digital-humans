@@ -93,7 +93,7 @@ export default {
     </div>
 
     <!-- 表格标题 -->
-    <h2>热门股票推荐</h2>
+    <h3>热门股票推荐</h3>
 
     <!-- 股票推荐表格 -->
     <el-table :data="filteredStocks" style="width: 100%" border>
@@ -121,69 +121,133 @@ export default {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .recommend-container {
   padding: 20px;
-}
+  background: linear-gradient(135deg, #e8f1f8 0%, #d2e4f3 100%);  // 改为淡蓝色背景
+  min-height: 100vh;
 
-.search-bar {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
+  h3 {
+    color: #2c3e50;  // 深色文字
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
 
-.search-bar input {
-  width: 300px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-right: 10px;
-}
+  .search-bar {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
 
-.search-bar button {
-  padding: 8px 16px;
-  background-color: #1b8eda;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+    input {
+      width: 300px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.8);  // 半透明白色背景
+      border: 1px solid #a8c6df;
+      border-radius: 8px;
+      color: #2c3e50;  // 深色文字
+      margin-right: 10px;
+      transition: all 0.3s ease;
 
-.search-bar button:hover {
-  background-color: #0f6299;
-}
+      &::placeholder {
+        color: #7f8c8d;
+      }
 
-.btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+      &:focus {
+        outline: none;
+        border-color: #3498db;
+        background: #ffffff;
+      }
+    }
 
-.btn-blue {
-  background-color: #1b8eda;
-  color: white;
-  margin-right: 10px;
-}
+    button {
+      padding: 8px 24px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
 
-.btn-blue:hover {
-  background-color: #0f6299;
-}
+      &:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
 
-.btn-red {
-  background-color: #f56c6c;
-  color: white;
-}
+  :deep(.el-table) {
+    background: rgba(127, 180, 242, 0.9);  // 半透明白色背景
+    border: 1px solid #a8c6df;
+    border-radius: 8px;
+    overflow: hidden;
 
-.btn-red:hover {
-  background-color: #d93030;
-}
+    th {
+      background: #cde6fa;  // 淡蓝色表头
+      border-bottom: 1px solid #99bfde;
+      color: #2c3e50;  // 深色文字
+      font-weight: 500;
+    }
 
-.red {
-  color: #f56c6c;
-}
+    td {
+      background: transparent;
+      border-bottom: 1px solid #e8f1f8;
+      color: #2c3e50;  // 深色文字
+    }
 
-.green {
-  color: #67c23a;
+    tr {
+      &:hover > td {
+        background: #f4f9fd;  // 淡蓝色悬停效果
+      }
+    }
+  }
+
+  .btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+  }
+
+  .btn-blue {
+    background: #3498db;
+    color: white;
+    margin-right: 10px;
+
+    &:hover {
+      background: #2980b9;
+      transform: translateY(-2px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .btn-red {
+    background: #e74c3c;
+    color: white;
+
+    &:hover {
+      background: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .red {
+    color: #e74c3c;
+    &:hover {
+      color: #c0392b;
+    }
+  }
+
+  .green {
+    color: #27ae60;
+    &:hover {
+      color: #219a52;
+    }
+  }
 }
 </style>
