@@ -8,6 +8,8 @@ import Policy from '../views/Policy/index.vue'
 import Talk from '../views/Talk/index.vue'
 import AI from '../views/AI/index.vue'
 import StockDetail from '../views/StockDetail/index.vue'
+import Login from '../views/Login/index.vue'
+import Register from '../views/Register/index.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -50,6 +52,16 @@ const routes = [
     path: '/stock/:code',
     name: 'StockDetail',
     component: StockDetail
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
+  },,
+  {
+    path: '/register',
+    name: 'Register',
+    component: Register
   }
 ]
 
