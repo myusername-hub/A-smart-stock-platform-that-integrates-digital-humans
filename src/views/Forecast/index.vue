@@ -59,7 +59,15 @@ export default {
             top: '20px'
           },
           tooltip: {
-            trigger: 'axis'
+            trigger: 'axis',
+            axisPointer: {
+              type: 'line',
+              lineStyle: {
+                color: '#7F7F7F',
+                width: 2,
+                type: 'dashed'
+              }
+            }
           },
           legend: {
             data: ['过去20天', '未来10天'],
@@ -93,6 +101,25 @@ export default {
               data: historicalData.map(item => item.value),
               itemStyle: {
                 color: '#FF6B6B'
+              },
+              animationDuration: 2000,
+              animationEasing: 'quadraticOut',
+              smooth: true,
+              effect: {
+                show: true,
+                period: 3,
+                trailLength: 0.7
+              },
+              symbol: 'circle',
+              symbolSize: 8,
+              lineStyle: {
+                width: 3,
+                shadowColor: 'rgba(255,107,107,0.5)',
+                shadowBlur: 10
+              },
+              emphasis: {
+                scale: true,
+                focus: 'series'
               }
             },
             {
@@ -101,9 +128,41 @@ export default {
               data: Array(historicalData.length).fill('-').concat(forecastData.map(item => item.value)),
               itemStyle: {
                 color: '#4D96FF'
+              },
+              animationDuration: 2000,
+              animationDelay: 1000,
+              animationEasing: 'quadraticOut',
+              smooth: true,
+              effect: {
+                show: true,
+                period: 3,
+                trailLength: 0.7
+              },
+              symbol: 'circle',
+              symbolSize: 8,
+              lineStyle: {
+                width: 3,
+                shadowColor: 'rgba(77,150,255,0.5)',
+                shadowBlur: 10
+              },
+              emphasis: {
+                scale: true,
+                focus: 'series'
               }
             }
-          ]
+          ],
+          animation: true,
+          animationThreshold: 2000,
+          animationDuration: 2000,
+          animationEasing: 'cubicInOut',
+          animationDelay: function (idx) {
+            return idx * 100;
+          },
+          animationDurationUpdate: 1000,
+          animationEasingUpdate: 'cubicInOut',
+          animationDelayUpdate: function (idx) {
+            return idx * 100;
+          }
         }
         chart.setOption(option)
       }
@@ -127,15 +186,15 @@ export default {
     })
 
     const searchStock = () => {
-  // 模拟数据更新
+      // 模拟数据更新
       const newHistoricalData = historicalData.map(item => ({
         ...item,
-        value: item.value + (Math.random() - 0.5) * 0.1
+        value: +(item.value + (Math.random() - 0.5) * 0.1).toFixed(2)
       }));
       
       const newForecastData = forecastData.map(item => ({
         ...item,
-        value: item.value + (Math.random() - 0.5) * 0.1
+        value: +(item.value + (Math.random() - 0.5) * 0.1).toFixed(2)
       }));
 
       // 更新图表
@@ -166,7 +225,7 @@ export default {
 }
 
 .search-bar {
-  justify-content:center;
+  justify-content: center;
   margin-bottom: 20px;
   display: flex;
   gap: 10px;

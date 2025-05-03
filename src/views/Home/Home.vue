@@ -49,7 +49,7 @@ export default {
       <div class="nav">
         <div class="search-box">
           <input type="text" placeholder="搜索股票..." class="search-input" />
-          <button class="search-btn"><i class="iconfont icon-search"></i></button>
+          <button class="search-btn"><i class="iconfont icon-sousuo"></i></button>
         </div>
         <div class="auth-links">
           <a @click="goToPage('/login')" class="auth-link">登录</a>
@@ -151,6 +151,7 @@ export default {
         display: flex;
         align-items: center;
         margin-right: 30px;
+        position: relative;
 
         .search-input {
           width: 250px;
@@ -163,6 +164,7 @@ export default {
           font-size: 14px;
           transition: all 0.3s ease;
           margin-right: 20px;
+          padding-right: 40px;
 
           &::placeholder {
             color: rgba(230, 241, 255, 0.5);
@@ -177,20 +179,26 @@ export default {
         }
 
         .search-btn {
-          margin-left: -40px;
+          position: absolute; // 改为绝对定位
+          right: 25px;      // 调整右侧位置
+          top: 50%;         // 垂直居中
+          transform: translateY(-50%); // 精确垂直居中
           background: transparent;
-          border: none;
           color: #e6f1ff;
+          border: none;
           cursor: pointer;
-          padding: 8px;
           transition: all 0.3s ease;
-
+          padding: 10px;     // 增加点击区域
+          display: flex;    // 使用 flex 布局
+          align-items: center;
+          justify-content: center;
           &:hover {
             color: #64b3f4;
           }
 
           i {
             font-size: 18px;
+            border-left:#fff;
           }
         }
       }

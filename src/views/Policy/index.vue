@@ -58,12 +58,13 @@
 </template>
 
 <style scoped lang="scss">
+@import '@/assets/theme.scss';
 .policy-container {
   padding: 20px;
-  background: linear-gradient(135deg, #1e2a38, #2a3d4f); // 高级感的深蓝渐变背景
+  background: $primary-gradient; 
   min-height: 100vh;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: $shadow-md;
 
   .header {
     display: flex;
@@ -73,32 +74,33 @@
 
     h2 {
       font-size: 2rem;
-      color: #f0f4f8; // 柔和的浅色文字
-      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+      color: #2d3748; // 更深的文字颜色
+      font-family: $font-family-base;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .btn-green,
     .btn-blue {
-      background: linear-gradient(135deg, #28a745, #218838); // 渐变绿色按钮
+      background: linear-gradient(135deg, #38b2ac, #319795); // 柔和的绿色
       color: white;
-      padding: 10px 20px; // 调整按钮大小
+      padding: 10px 20px;
       border: none;
-      border-radius: 8px; // 圆角更柔和
+      border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s ease;
-      margin-left: 10px; // 增加按钮之间的间隔
+      margin-left: 10px;
 
       &:hover {
-        background: linear-gradient(135deg, #218838, #1e7e34);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); // 更柔和的阴影
+        background: linear-gradient(135deg, #319795, #2c7a7b);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       }
     }
 
     .btn-blue {
-      background: linear-gradient(135deg, #236a8e, #1b5470); // 渐变蓝色按钮
+      background: linear-gradient(135deg, #4299e1, #3182ce); // 柔和的蓝色
 
       &:hover {
-        background: linear-gradient(135deg, #1b5470, #123954);
+        background: linear-gradient(135deg, #3182ce, #2b6cb0);
       }
     }
   }
@@ -106,25 +108,37 @@
   .content {
     .section {
       margin-bottom: 20px;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 
       h3 {
         font-size: 1.5rem;
-        color: #f0f4f8; // 柔和的浅色文字
-        margin-bottom: 10px;
-        border-bottom: 2px solid #3a4a5a; // 增加分割线
-        padding-bottom: 5px;
+        font-family: $font-family-base;
+        color: #2d3748;
+        margin-bottom: 15px;
+        border-bottom: 2px solid $border-color;
+        padding-bottom: 8px;
       }
 
       .textarea {
         width: 100%;
-        padding: 10px; // 调整文本框内边距
-        border: 1px solid #3a4a5a; // 更暗的边框颜色
+        @include input-base;
+        resize: none;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
         resize: none;
-        font-size: 1rem; // 调整字体大小
-        color: #f0f4f8; // 柔和的浅色文字
-        background: #2e3f50; // 深蓝背景
-        box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+        font-size: 1rem;
+        color: #2d3748;
+        background: #ffffff;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+        &:focus {
+          border-color: #4299e1;
+          box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+        }
       }
 
       .parameter-list {
@@ -133,47 +147,53 @@
         .parameter-item {
           display: flex;
           align-items: center;
-          margin-bottom: 10px; // 增加参数项之间的间隔
+          margin-bottom: 10px;
 
           .input {
             flex: 1;
             padding: 10px;
-            margin-right: 10px; // 增加输入框之间的间隔
-            border: 1px solid #3a4a5a; // 更暗的边框颜色
+            margin-right: 10px;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
-            background: #2e3f50; // 深蓝背景
-            color: #f0f4f8; // 柔和的浅色文字
-            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+            background: #ffffff;
+            color: #2d3748;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+            &:focus {
+              border-color: #4299e1;
+              box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+            }
           }
 
           .btn-red {
-            background: linear-gradient(135deg, #dc3545, #c82333); // 渐变红色按钮
+            background: linear-gradient(135deg, #f56565, #e53e3e);
             color: white;
-            padding: 10px 20px; // 调整按钮大小
+            padding: 10px 20px;
             border: none;
-            border-radius: 8px; // 圆角更柔和
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
 
             &:hover {
-              background: linear-gradient(135deg, #c82333, #a71d2a);
-              box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); // 更柔和的阴影
+              background: linear-gradient(135deg, #e53e3e, #c53030);
+              box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             }
           }
         }
 
         .btn-blue {
-          margin-top: 10px; // 增加按钮与参数列表的间隔
-          padding: 10px 20px; // 调整按钮大小
-          background: linear-gradient(135deg, #236a8e, #1b5470); // 渐变蓝色按钮
-          border-radius: 8px; // 圆角更柔和
-          display: inline-block;
+          margin-top: 10px;
+          padding: 10px 20px;
+          background: linear-gradient(135deg, #4299e1, #3182ce);
+          color: white;
+          border: none;
+          border-radius: 8px;
           cursor: pointer;
           transition: all 0.3s ease;
 
           &:hover {
-            background: linear-gradient(135deg, #1b5470, #123954);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); // 更柔和的阴影
+            background: linear-gradient(135deg, #3182ce, #2b6cb0);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
           }
         }
       }
@@ -181,31 +201,40 @@
       .code-editor {
         .code-area {
           width: 100%;
-          padding: 10px; // 调整文本框内边距
-          border: 1px solid #3a4a5a; // 更暗的边框颜色
+          padding: 12px;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
           resize: none;
-          font-family: monospace;
-          font-size: 1rem; // 调整字体大小
-          color: #f0f4f8; // 柔和的浅色文字
-          background: #2e3f50; // 深蓝背景
-          box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+          font-size: 1rem;
+          color: #2d3748;
+          background: #ffffff;
+          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+          @include input-base;
+          font-family: $font-family-code;
+
+          &:focus {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+          }
         }
 
         .code-toolbar {
-          margin-top: 15px; // 增加工具栏与代码区域的间隔
+          margin-top: 15px;
 
           .btn-blue {
-            margin-right: 10px; // 增加按钮之间的间隔
-            padding: 10px 20px; // 调整按钮大小
-            background: linear-gradient(135deg, #236a8e, #1b5470); // 渐变蓝色按钮
-            border-radius: 8px; // 圆角更柔和
+            margin-right: 10px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
 
             &:hover {
-              background: linear-gradient(135deg, #1b5470, #123954);
-              box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); // 更柔和的阴影
+              background: linear-gradient(135deg, #3182ce, #2b6cb0);
+              box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             }
           }
         }
@@ -216,16 +245,24 @@
   .footer {
     display: flex;
     justify-content: flex-end;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 
     .btn-blue {
-      margin-left: 10px; // 增加按钮之间的间隔
-      padding: 10px 20px; // 调整按钮大小
-      background: linear-gradient(135deg, #236a8e, #1b5470); // 渐变蓝色按钮
-      border-radius: 8px; // 圆角更柔和
+      margin-left: 10px;
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #4299e1, #3182ce);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
 
       &:hover {
-        background: linear-gradient(135deg, #1b5470, #123954);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); // 更柔和的阴影
+        background: linear-gradient(135deg, #3182ce, #2b6cb0);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       }
     }
   }
