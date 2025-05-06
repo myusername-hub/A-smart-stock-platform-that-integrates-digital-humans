@@ -61,6 +61,7 @@ export default {
 </script>
 
 <style scoped>
+@use '@/assets/theme' as theme;
 .discussion-container {
   padding: 20px;
   background: #f9f9f9;

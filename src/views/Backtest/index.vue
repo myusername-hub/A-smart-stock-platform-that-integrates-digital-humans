@@ -85,6 +85,7 @@ export default {
 </script>
 
 <style scoped>
+@use '@/assets/theme' as theme;
 .backtest-container {
   padding: 20px;
   background: linear-gradient(135deg, #e8f5ff, #d4e9f9); /* 清新浅蓝渐变背景 */

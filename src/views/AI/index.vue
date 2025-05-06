@@ -1,23 +1,27 @@
 <template>
   <div class="ai-container">
     <h2>AI 助手</h2>
-    <div v-if="!isServerRunning" class="service-error">
-      <el-alert
-        title="服务未运行"
-        type="warning"
-        description="AI助手服务当前不可用，请稍后再试或联系管理员"
-        show-icon
-        :closable="false"
-      />
-      <el-button 
-        type="primary" 
-        class="retry-btn" 
-        @click="checkServerStatus"
-      >
-        重试连接
+    <div v-if="loading" class="loading-container">
+      <el-spinner />
+      <span>正在加载 AI 助手...</span>
+    </div>
+    <div v-else-if="error" class="error-container">
+      <el-alert :title="error" type="error" show-icon />
+      <el-button type="primary" @click="initAIAssistant" class="retry-btn">
+        重试
       </el-button>
     </div>
-    <div v-else id="chatbot-container"></div>
+    <div v-else class="iframe-container">
+      <iframe
+        :src="`${serviceUrl}/chat/share?shareId=${config.shareId}`"
+        frameborder="0"
+        width="100%"
+        height="100%"
+        ref="aiFrame"
+        @load="handleIframeLoad"
+        @error="handleIframeError"
+      ></iframe>
+    </div>
   </div>
 </template>
 
@@ -26,71 +30,62 @@ export default {
   name: "AI",
   data() {
     return {
-      isServerRunning: false,
-      serviceUrl: 'http://localhost:3000'
+      loading: true,
+      error: null,
+      serviceUrl: 'https://cloud.fastgpt.cn',
+      config: {
+        shareId: 'v1jhpdkhdn3hvsuxreu5mn3b'
+      }
     }
   },
   methods: {
-    async checkServerStatus() {
-      try {
-        const response = await fetch(`${this.serviceUrl}/health`, { 
-          method: 'GET',
-          timeout: 5000 
-        });
-        this.isServerRunning = response.ok;
-        if (this.isServerRunning) {
-          this.initChatbot();
-        }
-      } catch (error) {
-        this.isServerRunning = false;
-        console.error('服务检测失败:', error);
-      }
+    initAIAssistant() {
+      this.loading = true;
+      this.error = null;
     },
-    initChatbot() {
-      const script = document.createElement("script");
-      script.src = `${this.serviceUrl}/js/iframe.js`;
-      // ...existing code...
+    handleIframeLoad() {
+      this.loading = false;
+    },
+    handleIframeError() {
+      this.loading = false;
+      this.error = 'AI 助手加载失败，请检查网络连接或稍后重试';
     }
   },
-  async mounted() {
-    await this.checkServerStatus();
+  mounted() {
+    this.initAIAssistant();
   }
 };
 </script>
 
 <style scoped lang="scss">
-.ai-container {
-  padding: 20px;
-  height: 100vh;
-
-  .service-error {
-    max-width: 600px;
-    margin: 40px auto;
-    text-align: center;
-
-    .retry-btn {
-      margin-top: 20px;
-    }
-  }
-}
-</style>
-
-<style scoped lang="scss">
-@use '@/assets/theme.scss';
+@use '@/assets/theme' as theme;
 
 .ai-container {
   padding: 20px;
   height: 100vh;
   background: theme.$primary-gradient;
+  display: flex;
+  flex-direction: column;
 
-  .service-error {
-    max-width: 600px;
-    margin: 40px auto;
+  .iframe-container {
+    flex: 1;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .loading-container,
+  .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
     text-align: center;
-
+    
     .retry-btn {
       margin-top: 20px;
-      @include theme.button-blue;
     }
   }
 }

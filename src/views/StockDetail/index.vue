@@ -124,6 +124,7 @@ export default {
 </template>
 
 <style scoped>
+@use '@/assets/theme' as theme;
 .stock-detail {
   padding: 20px;
 }

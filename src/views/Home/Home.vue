@@ -122,6 +122,7 @@ export default {
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/theme' as theme;
 .all {
   background: linear-gradient(135deg, #1a1f35 0%, #2a3a5c 100%);
   min-height: 100vh;

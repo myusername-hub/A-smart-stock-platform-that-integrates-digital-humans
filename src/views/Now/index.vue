@@ -211,6 +211,7 @@ export default {
 </template>
 
 <style scoped>
+@use '@/assets/theme' as theme;
 h3 {
   font-size: 24px;
   margin-bottom: 20px;

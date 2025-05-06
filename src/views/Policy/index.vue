@@ -58,13 +58,14 @@
 </template>
 
 <style scoped lang="scss">
-@import '@/assets/theme.scss';
+@use '@/assets/theme' as theme;
+
 .policy-container {
   padding: 20px;
-  background: $primary-gradient; 
+  background: theme.$primary-gradient;
   min-height: 100vh;
   border-radius: 12px;
-  box-shadow: $shadow-md;
+  box-shadow: theme.$shadow-md;
 
   .header {
     display: flex;
@@ -74,8 +75,8 @@
 
     h2 {
       font-size: 2rem;
-      color: #2d3748; // 更深的文字颜色
-      font-family: $font-family-base;
+      color: #2d3748;
+      font-family: theme.$font-family-base;
       text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
     }
 
@@ -115,21 +116,21 @@
 
       h3 {
         font-size: 1.5rem;
-        font-family: $font-family-base;
+        font-family: theme.$font-family-base;
         color: #2d3748;
         margin-bottom: 15px;
-        border-bottom: 2px solid $border-color;
+        border-bottom: 2px solid theme.$border-color;
         padding-bottom: 8px;
       }
 
       .textarea {
         width: 100%;
-        @include input-base;
+        outline: none;
+        transition: all 0.3s ease;
         resize: none;
         padding: 12px;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        resize: none;
         font-size: 1rem;
         color: #2d3748;
         background: #ffffff;
@@ -201,17 +202,17 @@
       .code-editor {
         .code-area {
           width: 100%;
+          outline: none;
+          transition: all 0.3s ease;
           padding: 12px;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
           resize: none;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+          font-family: theme.$font-family-code;
           font-size: 1rem;
           color: #2d3748;
           background: #ffffff;
           box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
-          @include input-base;
-          font-family: $font-family-code;
 
           &:focus {
             border-color: #4299e1;

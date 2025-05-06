@@ -14,7 +14,8 @@
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/theme' as theme;
 nav {
   display: flex;
   gap: 1rem;

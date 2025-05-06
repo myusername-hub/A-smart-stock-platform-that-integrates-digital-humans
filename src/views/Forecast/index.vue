@@ -220,6 +220,7 @@ export default {
 </script>
 
 <style scoped>
+@use '@/assets/theme' as theme;
 .forecast-container {
   padding: 20px;
 }

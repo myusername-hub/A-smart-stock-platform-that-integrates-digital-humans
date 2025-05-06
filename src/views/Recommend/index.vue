@@ -122,6 +122,7 @@ export default {
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/theme' as theme;
 .recommend-container {
   padding: 20px;
   background: linear-gradient(135deg, #e8f1f8 0%, #d2e4f3 100%);  // 改为淡蓝色背景

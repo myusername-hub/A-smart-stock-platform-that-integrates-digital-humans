@@ -95,6 +95,7 @@ export default {
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/theme' as theme;
 .signin-container {
   min-height: 100vh;
   display: flex;
