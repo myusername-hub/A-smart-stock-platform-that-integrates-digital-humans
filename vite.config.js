@@ -10,5 +10,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'), // 配置 @ 指向 src 目录
     },
   },
-
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "@/assets/theme.scss";`  // 全局引入主题文件
+      }
+    }
+  }
 })
