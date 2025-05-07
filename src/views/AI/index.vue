@@ -121,25 +121,18 @@ export default {
   },
   mounted() {
     window.addEventListener('resize', this.handleResize);
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'playVideo') {
+        this.showVideo = true;
+        // 这里可以根据消息内容选择要播放的视频
+        // this.config.videoUrl = ...
+      }
+    });
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.handleResize);
   },
-  methods: {handleResize() {
-      const chatContainer = this.$refs.chatContainer;
-      const floatButton = this.$refs.floatButton;
-      if (chatContainer) {
-        // 修改resize时的边界检查
-        const maxX = window.innerWidth - chatContainer.offsetWidth - 20; // 20px的安全边距
-        const maxY = window.innerHeight - chatContainer.offsetHeight - 20;
-        this.chatPosition.x = Math.min(Math.max(20, this.chatPosition.x), maxX);
-        this.chatPosition.y = Math.min(Math.max(20, this.chatPosition.y), maxY);
-      }
-      // ... 其他代码保持不变 ...
-    },
-    handleIframeLoad() {
-      console.log('AI 助手就绪');
-    },
+  methods: {
     openLocalVideo() {
       this.$refs.fileInput.click();
     },
@@ -226,13 +219,85 @@ export default {
       const chatContainer = this.$refs.chatContainer;
       const floatButton = this.$refs.floatButton;
       if (chatContainer) {
-        this.chatPosition.x = Math.min(this.chatPosition.x, window.innerWidth - chatContainer.offsetWidth);
-        this.chatPosition.y = Math.min(this.chatPosition.y, window.innerHeight - chatContainer.offsetHeight);
+        // 修改resize时的边界检查
+        const maxX = window.innerWidth - chatContainer.offsetWidth - 20; // 20px的安全边距
+        const maxY = window.innerHeight - chatContainer.offsetHeight - 20;
+        this.chatPosition.x = Math.min(Math.max(20, this.chatPosition.x), maxX);
+        this.chatPosition.y = Math.min(Math.max(20, this.chatPosition.y), maxY);
       }
       if (floatButton) {
         this.buttonPosition.x = Math.min(this.buttonPosition.x, window.innerWidth - floatButton.offsetWidth);
         this.buttonPosition.y = Math.min(this.buttonPosition.y, window.innerHeight - floatButton.offsetHeight);
       }
+    },
+    injectVideoButton() {
+      const iframe = document.querySelector('iframe');
+      if (!iframe || !iframe.contentWindow || !iframe.contentWindow.document) {
+        console.log('无法访问iframe内容');
+        return;
+      }
+      
+      const doc = iframe.contentWindow.document;
+      
+      // 使用更准确的选择器来匹配 AI 回复
+      const messages = doc.querySelectorAll('.answer-content');
+      console.log('找到消息数量:', messages.length);
+      
+      messages.forEach(message => {
+        if (!message.querySelector('.video-btn')) {
+          const btn = doc.createElement('button');
+          btn.className = 'video-btn';
+          btn.innerHTML = '📹';
+          btn.style.cssText = `
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 8px;
+            border: none;
+            border-radius: 50%;
+            background: #4e83fd;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 9999;
+            opacity: 1;
+          `;
+          
+          // 直接在消息容器中添加按钮
+          message.style.position = 'relative';
+          message.appendChild(btn);
+          
+          btn.addEventListener('click', () => {
+            this.toggleVideo();
+          });
+        }
+      });
+
+      // 监听新消息
+      const observer = new MutationObserver(() => {
+        console.log('检测到新消息');
+        this.injectVideoButton();
+      });
+
+      // 监听聊天容器的变化
+      const chatWrapper = doc.querySelector('.answer-list') || doc.querySelector('.chat-wrapper');
+      if (chatWrapper) {
+        observer.observe(chatWrapper, { 
+          childList: true, 
+          subtree: true 
+        });
+        console.log('开始监听聊天容器');
+      }
+    },
+
+    handleIframeLoad() {
+      console.log('iframe加载完成');
+      // 延迟执行注入以确保内容加载完成
+      setTimeout(() => {
+        this.injectVideoButton();
+        console.log('执行按钮注入');
+      }, 2000);
     }
   }
 };
@@ -242,7 +307,6 @@ export default {
 @use '@/assets/theme' as theme;
 
 .ai-container {
-  // ... 现有样式保持不变 ...
   .ai-chat-container {
     position: fixed;
     width: 700px;
@@ -324,6 +388,7 @@ export default {
         }
       }
     }
+
     .chat-frame, .local-chat, .cloud-chat {
       height: calc(100% - 60px);
       
@@ -333,14 +398,27 @@ export default {
         height: 100%;
       }
 
-      // 添加以下样式来调整iframe内部的输入框高度
       :deep(.chat-input-container) {
-        max-height: 100px !important; // 限制输入框最大高度
+        max-height: 100px !important;
       }
 
       :deep(.chat-input-box) {
-        max-height: 80px !important; // 限制实际输入区域最大高度
-        overflow-y: auto !important; // 添加垂直滚动条
+        max-height: 80px !important;
+        overflow-y: auto !important;
+      }
+
+      :deep(.video-btn) {
+        opacity: 0;
+        transition: opacity 0.3s;
+        
+        &:hover {
+          opacity: 1;
+          background: #3a6cd8 !important;
+        }
+      }
+
+      :deep(.markdown-body:hover .video-btn) {
+        opacity: 0.8;
       }
     }
   }
