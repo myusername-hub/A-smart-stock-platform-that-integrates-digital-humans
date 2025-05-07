@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home/Home.vue'
 import Now from '../views/Now/index.vue'
-import Recommend from '../views/Recommend/index.vue'
 import Backtest from '../views/Backtest/index.vue'
 import Forecast from '../views/Forecast/index.vue'
 import Policy from '../views/Policy/index.vue'
@@ -21,7 +20,7 @@ const routes = [
   {
     path: '/recommend',
     name: 'Recommend',
-    component: Recommend
+    component: () => import('@/views/Recommend/index.vue')
   },
   {
     path: '/backtest',
@@ -50,8 +49,8 @@ const routes = [
   },
   {
     path: '/stock/:code',
-    name: 'StockDetail',
-    component: StockDetail
+    name: 'stock',
+    component: () => import('@/views/StockDetail/index.vue')
   },
   {
     path: '/login',
