@@ -15,7 +15,7 @@ const routes = [
   {
     path: '/now',
     name: 'Now',
-    component: Now
+    component: () => import('../views/Now/index.vue')
   },
   {
     path: '/recommend',

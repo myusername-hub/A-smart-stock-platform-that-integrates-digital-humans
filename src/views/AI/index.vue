@@ -7,6 +7,10 @@
       <div class="chat-header" @mousedown.stop="startDragChat">
         <h2>AI 助手</h2>
         <div class="ai-buttons">
+          <!-- 添加本地视频按钮 -->
+          <div class="ai-button" @click.stop="openLocalVideo">
+            <el-icon><FolderOpened /></el-icon>
+          </div>
           <div class="ai-button" @click.stop="toggleVideo">
             <el-icon><VideoCamera /></el-icon>
           </div>
@@ -15,6 +19,7 @@
           </div>
         </div>
       </div>
+      
       <!-- 本地开发环境聊天框 -->
       <div v-if="!config.useCloud" class="local-chat">
         <iframe
@@ -26,6 +31,7 @@
           @load="handleIframeLoad"
         ></iframe>
       </div>
+      
       <!-- 云环境聊天框 -->
       <div v-else class="cloud-chat">
         <iframe
@@ -37,8 +43,23 @@
           @load="handleIframeLoad"
         ></iframe>
       </div>
+
+      <!-- 视频播放容器 -->
+      <div v-if="showVideo" class="video-container">
+        <video 
+          ref="videoPlayer"
+          class="digital-human-video"
+          :src="config.videoUrl"
+          controls
+          autoplay
+        ></video>
+        <div class="close-video" @click="closeVideo">
+          <el-icon><Close /></el-icon>
+        </div>
+      </div>
     </div>
-    <!-- 修改后的浮动按钮部分 -->
+
+    <!-- 悬浮按钮 -->
     <div class="ai-float-button" 
          ref="floatButton"
          @mousedown.stop="startDragButton"
@@ -47,11 +68,20 @@
         <Comment />
       </el-icon>
     </div>
+
+    <!-- 隐藏的文件输入框 -->
+    <input 
+      type="file" 
+      ref="fileInput"
+      accept="video/mp4"
+      style="display: none"
+      @change="handleFileSelect"
+    >
   </div>
 </template>
 
 <script>
-import { Comment, VideoCamera, Close, ChatLineRound } from '@element-plus/icons-vue';
+import { Comment, VideoCamera, Close, ChatLineRound, FolderOpened } from '@element-plus/icons-vue';
 import { AI_CONFIG } from '@/config/ai.config';
 
 export default {
@@ -60,7 +90,8 @@ export default {
     Comment,
     ChatLineRound,
     VideoCamera,
-    Close
+    Close,
+    FolderOpened
   },
   data() {
     return {
@@ -72,15 +103,16 @@ export default {
         shareId: AI_CONFIG.shareId,
         localUrl: AI_CONFIG.local.baseUrl,
         cloudUrl: AI_CONFIG.cloud.baseUrl,
-        videoUrl: '/src/assets/videos/digital-human.mp4'
+        videoUrl: '/src/assets/videos/digital-human.mp4',
+        videoList: [] // 存储视频列表
       },
       chatPosition: {
-        x: window.innerWidth - 420,
-        y: 20
+        x: Math.min(window.innerWidth - 720, window.innerWidth - 720), // 考虑到容器宽度700px + padding
+        y: Math.min(20, window.innerHeight - 520) // 考虑到容器高度500px + padding
       },
       buttonPosition: {
-        x: window.innerWidth - 100, // 距离右边界增加到100px
-        y: window.innerHeight - 100 // 距离下边界增加到100px
+        x: window.innerWidth - 100,
+        y: window.innerHeight - 100
       },
       isDragging: false,
       dragTarget: null,
@@ -93,12 +125,52 @@ export default {
   beforeDestroy() {
     window.removeEventListener('resize', this.handleResize);
   },
-  methods: {
+  methods: {handleResize() {
+      const chatContainer = this.$refs.chatContainer;
+      const floatButton = this.$refs.floatButton;
+      if (chatContainer) {
+        // 修改resize时的边界检查
+        const maxX = window.innerWidth - chatContainer.offsetWidth - 20; // 20px的安全边距
+        const maxY = window.innerHeight - chatContainer.offsetHeight - 20;
+        this.chatPosition.x = Math.min(Math.max(20, this.chatPosition.x), maxX);
+        this.chatPosition.y = Math.min(Math.max(20, this.chatPosition.y), maxY);
+      }
+      // ... 其他代码保持不变 ...
+    },
     handleIframeLoad() {
       console.log('AI 助手就绪');
     },
+    openLocalVideo() {
+      this.$refs.fileInput.click();
+    },
+    handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const videoUrl = URL.createObjectURL(file);
+        this.config.videoList.push({
+          url: videoUrl,
+          name: file.name
+        });
+        this.config.videoUrl = videoUrl;
+        this.showVideo = true;
+        if (!this.showChat) {
+          this.showChat = true;
+        }
+      }
+      // 清除input的值，允许重复选择同一个文件
+      event.target.value = '';
+    },
+    closeVideo() {
+      this.showVideo = false;
+      if (this.$refs.videoPlayer) {
+        this.$refs.videoPlayer.pause();
+      }
+    },
     toggleChat() {
       this.showChat = !this.showChat;
+      if (!this.showChat) {
+        this.closeVideo();
+      }
     },
     toggleVideo() {
       this.showVideo = !this.showVideo;
@@ -106,6 +178,7 @@ export default {
         this.showChat = true;
       }
     },
+    // ... 其他现有方法保持不变 ...
     startDragChat(event) {
       if (event.target.closest('.ai-button')) return;
       event.preventDefault();
@@ -119,35 +192,26 @@ export default {
     startDrag(event, type) {
       this.isDragging = true;
       this.dragTarget = type;
-      
       const target = type === 'chat' ? this.chatPosition : this.buttonPosition;
       this.dragOffset = {
         x: event.clientX - target.x,
         y: event.clientY - target.y
       };
-      
       document.addEventListener('mousemove', this.onDrag);
       document.addEventListener('mouseup', this.stopDrag);
     },
     onDrag(event) {
       if (!this.isDragging) return;
-      
       const target = this.dragTarget === 'chat' ? this.chatPosition : this.buttonPosition;
       const element = this.dragTarget === 'chat' ? this.$refs.chatContainer : this.$refs.floatButton;
-      
       if (!element) return;
-      
       let newX = event.clientX - this.dragOffset.x;
       let newY = event.clientY - this.dragOffset.y;
-      
-      // 增加边界间距
-      const padding = 20; // 设置20px的边界间距
+      const padding = 20;
       const maxX = window.innerWidth - element.offsetWidth - padding;
       const maxY = window.innerHeight - element.offsetHeight - padding;
-      
       newX = Math.min(Math.max(padding, newX), maxX);
       newY = Math.min(Math.max(padding, newY), maxY);
-      
       target.x = newX;
       target.y = newY;
     },
@@ -161,12 +225,10 @@ export default {
     handleResize() {
       const chatContainer = this.$refs.chatContainer;
       const floatButton = this.$refs.floatButton;
-      
       if (chatContainer) {
         this.chatPosition.x = Math.min(this.chatPosition.x, window.innerWidth - chatContainer.offsetWidth);
         this.chatPosition.y = Math.min(this.chatPosition.y, window.innerHeight - chatContainer.offsetHeight);
       }
-      
       if (floatButton) {
         this.buttonPosition.x = Math.min(this.buttonPosition.x, window.innerWidth - floatButton.offsetWidth);
         this.buttonPosition.y = Math.min(this.buttonPosition.y, window.innerHeight - floatButton.offsetHeight);
@@ -180,15 +242,16 @@ export default {
 @use '@/assets/theme' as theme;
 
 .ai-container {
+  // ... 现有样式保持不变 ...
   .ai-chat-container {
     position: fixed;
-    width: 400px;
+    width: 700px;
     height: 500px;
     background: white;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+    z-index: 800;
 
     .chat-header {
       display: flex;
@@ -228,11 +291,6 @@ export default {
       }
     }
 
-    .local-chat,
-    .cloud-chat {
-      height: calc(100% - 50px);
-    }
-
     .video-container {
       position: absolute;
       left: 0;
@@ -248,19 +306,41 @@ export default {
       .digital-human-video {
         width: 100%;
         height: auto;
+        max-height: 100%;
       }
       
       .close-video {
         position: absolute;
         top: 10px;
         right: 10px;
+        padding: 5px;
         font-size: 20px;
         color: white;
         cursor: pointer;
+        z-index: 1002;
         
         &:hover {
           color: #f56c6c;
         }
+      }
+    }
+    .chat-frame, .local-chat, .cloud-chat {
+      height: calc(100% - 60px);
+      
+      iframe {
+        border: none;
+        width: 100%;
+        height: 100%;
+      }
+
+      // 添加以下样式来调整iframe内部的输入框高度
+      :deep(.chat-input-container) {
+        max-height: 100px !important; // 限制输入框最大高度
+      }
+
+      :deep(.chat-input-box) {
+        max-height: 80px !important; // 限制实际输入区域最大高度
+        overflow-y: auto !important; // 添加垂直滚动条
       }
     }
   }
@@ -282,9 +362,9 @@ export default {
     
     .chat-icon {
       font-size: 10px;
-      color:#3a3ae6;
-      cursor: pointer;;
-      width: 70%;;
+      color: #3a3ae6;
+      cursor: pointer;
+      width: 70%;
       height: 70%;
       display: flex;
       align-items: center;

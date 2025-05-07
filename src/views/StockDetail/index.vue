@@ -2,9 +2,6 @@
   <div class="stock-detail">
     <div class="header">
       <div class="left">
-        <button class="back-btn" @click="goBack">
-          <i class="iconfont icon-fanhui"></i> 返回
-        </button>
         <h2>{{ stockData?.name }} {{ stockData?.code }}</h2>
       </div>
     </div>
@@ -68,11 +65,6 @@ import * as echarts from 'echarts'
 
 const router = useRouter()
 const stockData = ref(JSON.parse(localStorage.getItem('currentStock')))
-
-// 返回上一页
-const goBack = () => {
-  router.back()
-}
 
 // 模拟数据
 const priceInfo = ref({
@@ -284,22 +276,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 20px;
-}
-
-.back-btn {
-  padding: 8px 16px;
-  background-color: #409eff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.back-btn:hover {
-  background-color: #66b1ff;
 }
 
 .price-info {

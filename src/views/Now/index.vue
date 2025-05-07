@@ -1,117 +1,171 @@
 <template>
-  <div class="now-container">
-    <table class="stock-table">
-      <thead>
-        <tr>
-          <th>股票编号</th>
-          <th>股票名称</th>
-          <th>最新价</th>
-          <th>单日涨跌幅</th>
-          <th>3日涨跌幅</th>
-          <th>5日涨跌幅</th>
-          <th>涨跌额</th>
-          <th>换手率</th>
-          <th>振幅</th>
-          <th>上市日期</th>
-          <th>流通股本</th>
-          <th>总股本</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in stockList" 
-            :key="item.code"
-            @click="handleRowClick(item.code)"
-            class="table-row">
-          <td>{{ item.code }}</td>
-          <td>{{ item.name }}</td>
-          <td :class="{ 'red': item.price > 0, 'green': item.price < 0 }">{{ item.price }}</td>
-          <td :class="{ 'red': item.dayChange > 0, 'green': item.dayChange < 0 }">{{ item.dayChange }}%</td>
-          <td :class="{ 'red': item.threeChange > 0, 'green': item.threeChange < 0 }">{{ item.threeChange }}%</td>
-          <td :class="{ 'red': item.fiveChange > 0, 'green': item.fiveChange < 0 }">{{ item.fiveChange }}%</td>
-          <td :class="{ 'red': item.changeAmount > 0, 'green': item.changeAmount < 0 }">{{ item.changeAmount }}</td>
-          <td>{{ item.turnoverRate }}%</td>
-          <td>{{ item.amplitude }}%</td>
-          <td>{{ item.listDate }}</td>
-          <td>{{ item.floatShares }}</td>
-          <td>{{ item.totalShares }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="now-page">
+    <div class="header">
+      <h2>实时行情</h2>
+      <div v-if="error" class="error-message">
+        {{ error }}
+      </div>
+    </div>
+
+    <div v-if="loading" class="loading">
+      数据加载中...
+    </div>
+
+    <div v-if="hasErrors" class="stock-table">
+      <div class="table-header">
+        <div>股票代码</div>
+        <div>状态信息</div>
+      </div>
+      <div v-for="stock in stockData" 
+           :key="stock.ts_code" 
+           class="stock-row error-row">
+        <div class="code">{{ stock.ts_code }}</div>
+        <div class="message">{{ stock.message }}</div>
+      </div>
+    </div>
+
+    <div v-else-if="stockData.length > 0" class="stock-table">
+      <div class="table-header">
+        <div>股票代码</div>
+        <div>收盘价</div>
+        <div>涨跌幅(%)</div>
+        <div>成交量</div>
+        <div>成交额(万)</div>
+      </div>
+
+      <div v-for="stock in stockData" 
+           :key="stock.ts_code" 
+           class="stock-row">
+        <div>{{ stock.ts_code }}</div>
+        <div>{{ stock.close }}</div>
+        <div :class="[stock.pct_chg >= 0 ? 'price-up' : 'price-down']">
+          {{ stock.pct_chg?.toFixed(2) }}%
+        </div>
+        <div>{{ (stock.vol / 1000)?.toFixed(2) }}K</div>
+        <div>{{ (stock.amount / 10000)?.toFixed(2) }}</div>
+      </div>
+    </div>
+
+    <div v-else-if="!loading && !error" class="no-data">
+      暂无股票数据
+    </div>
   </div>
 </template>
 
 <script>
+import { ref, onMounted, computed } from 'vue'
+import axios from 'axios'
+
 export default {
-  name: 'NowView',
-  data() {
-    return {
-      stockList: [
-        {
-          code: '600007',
-          name: '中国国贸',
-          price: 17.61,
-          dayChange: 1.09,
-          threeChange: 0.92,
-          fiveChange: 2.09,
-          changeAmount: 0.19,
-          turnoverRate: 0.17,
-          amplitude: 2.76,
-          listDate: '19990312',
-          floatShares: '10.07亿',
-          totalShares: '10.07亿',
-          detailUrl: 'c:/Users/lenovo/Documents/WeChat Files/wxid_v1bro0hwlpfq22/FileStorage/Temp/992c5b2207edee39fb007a68f2120a0.png'
-        },
-        // 添加更多股票数据...
-      ]
+  setup() {
+    const stockData = ref([])
+    const loading = ref(false)
+    const error = ref(null)
+
+    const hasErrors = computed(() => {
+      return stockData.value.length > 0 && stockData.value.every(stock => stock.message);
+    });
+
+    const fetchStockData = async () => {
+      try {
+        loading.value = true
+        error.value = null
+        const response = await axios.get('http://localhost:5000/stock_data')
+        console.log('API响应数据:', response.data) // 调试用
+        stockData.value = response.data
+      } catch (err) {
+        console.error('获取数据失败:', err)
+        error.value = err.message
+      } finally {
+        loading.value = false
+      }
     }
-  },
-  methods: {
-    handleRowClick(code) {
-      this.$router.push({
-        path: '/stock/:code',
-        query: { code: code }  // 传递股票代码作为参数
-      });
+
+    onMounted(() => {
+      fetchStockData()
+      // 每30秒刷新一次数据
+      const timer = setInterval(fetchStockData, 30000)
+      return () => clearInterval(timer)
+    })
+
+    return {
+      stockData,
+      loading,
+      error,
+      hasErrors
     }
   }
 }
 </script>
 
 <style scoped>
-.now-container {
+.now-page {
   padding: 20px;
+  color: #e6f1ff;
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.error-message {
+  color: #ff4d4f;
+  margin-top: 10px;
+}
+
+.loading, .no-data {
+  text-align: center;
+  padding: 20px;
+  color: #a8b2d1;
 }
 
 .stock-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
 }
 
-.stock-table th,
-.stock-table td {
-  padding: 8px;
-  border: 1px solid #eee;
-}
-
-.stock-table th {
-  background-color: #f5f7fa;
+.table-header {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
   font-weight: bold;
 }
 
-.table-row {
-  cursor: pointer;
+.stock-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transition: background-color 0.3s;
 }
 
-.table-row:hover {
-  background-color: #f5f7fa;
+.stock-row:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.red {
-  color: #f56c6c;
+.price-up {
+  color: #52c41a;
 }
 
-.green {
-  color: #67c23a;
+.price-down {
+  color: #ff4d4f;
+}
+
+.error-row {
+  grid-template-columns: 1fr 4fr !important;
+}
+
+.error-row .code {
+  color: #1890ff;
+  font-weight: bold;
+}
+
+.error-row .message {
+  color: #ff4d4f;
+  text-align: left;
+  padding-left: 20px;
 }
 </style>

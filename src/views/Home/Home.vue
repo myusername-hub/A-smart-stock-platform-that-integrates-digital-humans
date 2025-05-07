@@ -241,7 +241,7 @@ export default {
         font-size: 2.8rem;
         color: #e6f1ff;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        animation: scrollText 15s linear infinite;
+        animation: scrollText 10s linear infinite;
         padding-left: 100%;
       }
 
