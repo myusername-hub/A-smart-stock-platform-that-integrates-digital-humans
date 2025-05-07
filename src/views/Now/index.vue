@@ -53,6 +53,7 @@
 </template>
 
 <script>
+<<<<<<< HEAD
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 
@@ -93,12 +94,20 @@ export default {
       loading,
       error,
       hasErrors
+=======
+export default {
+  name: 'NowView',
+  data() {
+    return {
+      // 您的数据
+>>>>>>> df14a350e61311da1daaed85c387f5a33293a8f8
     }
   }
 }
 </script>
 
 <style scoped>
+<<<<<<< HEAD
 .now-page {
   padding: 20px;
   color: #e6f1ff;
@@ -168,4 +177,9 @@ export default {
   text-align: left;
   padding-left: 20px;
 }
+=======
+.now-container {
+  padding: 20px;
+}
+>>>>>>> df14a350e61311da1daaed85c387f5a33293a8f8
 </style>

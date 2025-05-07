@@ -52,6 +52,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+<<<<<<< HEAD
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -91,12 +92,20 @@ const goToDetail = (code) => {
 
 onMounted(() => {
   // 可以在这里添加初始化逻辑，比如从API获取数据
+=======
+
+const data = ref(null)
+
+onMounted(() => {
+  // 初始化逻辑
+>>>>>>> df14a350e61311da1daaed85c387f5a33293a8f8
 })
 </script>
 
 <style scoped>
 .recommend-container {
   padding: 20px;
+<<<<<<< HEAD
 }
 
 .search-wrapper {
@@ -190,5 +199,7 @@ onMounted(() => {
 
 .stock-row:hover {
   background-color: #f5f7fa;
+=======
+>>>>>>> df14a350e61311da1daaed85c387f5a33293a8f8
 }
 </style>

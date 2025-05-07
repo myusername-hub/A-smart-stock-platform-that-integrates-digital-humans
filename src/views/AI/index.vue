@@ -97,6 +97,8 @@ export default {
     return {
       showChat: false,
       showVideo: false,
+      showChat: false,
+      showVideo: false,
       config: {
         useCloud: true,
         iframeId: 'chatbot-iframe',
