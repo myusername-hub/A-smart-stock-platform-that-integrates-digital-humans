@@ -1,3 +1,47 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const stockList = ref([
+  {
+    code: 'SH600278',
+    name: '东方创业',
+    price: 7.73,
+    highPrice: 7.77,
+    lowPrice: 7.71,
+    changeRate: -0.25,
+    amplitude: 0.77,
+    turnover: '1794.56万元'
+  },
+  {
+    code: 'SH600803',
+    name: '新奥股份',
+    price: 18.78,
+    highPrice: 19.55,
+    lowPrice: 18.54,
+    changeRate: -3.39,
+    amplitude: 5.19,
+    turnover: '39740.69万元'
+  },
+  // 可以添加更多数据...
+])
+
+const goToDetail = (code) => {
+  const currentStock = stockList.value.find(item => item.code === code)
+  // 将当前股票数据存储到 localStorage
+  localStorage.setItem('currentStock', JSON.stringify(currentStock))
+  router.push({
+    name: 'stock',
+    params: { code }
+  })
+}
+
+onMounted(() => {
+  // 可以在这里添加初始化逻辑，比如从API获取数据
+})
+</script>
+
 <template>
   <div class="recommend-container">
     <div class="search-wrapper">
@@ -50,62 +94,9 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-<<<<<<< HEAD
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-const stockList = ref([
-  {
-    code: 'SH600278',
-    name: '东方创业',
-    price: 7.73,
-    highPrice: 7.77,
-    lowPrice: 7.71,
-    changeRate: -0.25,
-    amplitude: 0.77,
-    turnover: '1794.56万元'
-  },
-  {
-    code: 'SH600803',
-    name: '新奥股份',
-    price: 18.78,
-    highPrice: 19.55,
-    lowPrice: 18.54,
-    changeRate: -3.39,
-    amplitude: 5.19,
-    turnover: '39740.69万元'
-  },
-  // 可以添加更多数据...
-])
-
-const goToDetail = (code) => {
-  const currentStock = stockList.value.find(item => item.code === code)
-  // 将当前股票数据存储到 localStorage
-  localStorage.setItem('currentStock', JSON.stringify(currentStock))
-  router.push({
-    name: 'stock',
-    params: { code }
-  })
-}
-
-onMounted(() => {
-  // 可以在这里添加初始化逻辑，比如从API获取数据
-=======
-
-const data = ref(null)
-
-onMounted(() => {
-  // 初始化逻辑
->>>>>>> df14a350e61311da1daaed85c387f5a33293a8f8
-})
-</script>
-
 <style scoped>
 .recommend-container {
   padding: 20px;
-<<<<<<< HEAD
 }
 
 .search-wrapper {
@@ -199,7 +190,5 @@ onMounted(() => {
 
 .stock-row:hover {
   background-color: #f5f7fa;
-=======
->>>>>>> df14a350e61311da1daaed85c387f5a33293a8f8
 }
 </style>
