@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Bridge</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+        .video-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 8px 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .markdown-body:hover .video-btn {
+            opacity: 1;
+        }
+        .video-btn:hover {
+            background: #1976D2;
+        }
+        #error {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="error"></div>
+    <script>
+        const container = document.getElementById('container');
+        const errorElement = document.getElementById('error');
+        let mainIframe = null;
+        let retryCount = 0;
+        const MAX_RETRIES = 5;
+
+        function showError(message) {
+            console.error(message);
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        function loadChat(url) {
+            mainIframe = document.createElement('iframe');
+            mainIframe.style.width = '100%';
+            mainIframe.style.height = '100%';
+            mainIframe.style.border = 'none';
+            mainIframe.src = url;
+            
+            mainIframe.onload = () => {
+                console.log('聊天框加载完成，开始注入按钮');
+                setTimeout(injectButtons, 1000);
+            };
+
+            container.appendChild(mainIframe);
+        }
+
+        function injectButtons() {
+            try {
+                const doc = mainIframe.contentDocument;
+                if (!doc) {
+                    throw new Error('无法访问iframe内容');
+                }
+
+                // 注入样式
+                const style = doc.createElement('style');
+                style.textContent = `
+                    .markdown-body { position: relative !important; }
+                    .video-btn {
+                        position: absolute !important;
+                        right: 15px !important;
+                        top: 50% !important;
+                        transform: translateY(-50%) !important;
+                        padding: 8px 16px !important;
+                        background: #2196F3 !important;
+                        color: white !important;
+                        border: none !important;
+                        border-radius: 20px !important;
+                        cursor: pointer !important;
+                        font-size: 14px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 8px !important;
+                        z-index: 999 !important;
+                    }
+                    .video-btn:hover {
+                        background: #1976D2 !important;
+                    }
+                `;
+                doc.head.appendChild(style);
+
+                // 添加按钮到现有消息
+                const messages = doc.querySelectorAll('.markdown-body');
+                if (messages.length === 0) {
+                    if (retryCount < MAX_RETRIES) {
+                        retryCount++;
+                        console.log(`未找到消息，${retryCount}秒后重试...`);
+                        setTimeout(injectButtons, 1000);
+                    }
+                    return;
+                }
+
+                // 为每个消息添加按钮
+                messages.forEach(addButtonToMessage);
+
+                // 监听新消息
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach(mutation => {
+                        mutation.addedNodes.forEach(node => {
+                            if (node.classList?.contains('markdown-body')) {
+                                addButtonToMessage(node);
+                            }
+                        });
+                    });
+                });
+
+                const chatContainer = doc.querySelector('.answer-list, .chat-wrapper');
+                if (chatContainer) {
+                    observer.observe(chatContainer, {
+                        childList: true,
+                        subtree: true
+                    });
+                }
+
+            } catch (error) {
+                console.error('注入按钮失败:', error);
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`注入失败，${retryCount}秒后重试...`);
+                    setTimeout(injectButtons, 1000);
+                }
+            }
+        }
+
+        function addButtonToMessage(message) {
+            if (message.querySelector('.video-btn')) return;
+
+            const stockCode = message.textContent.match(/([0-9]{6})/)?.[1];
+            const btn = document.createElement('button');
+            btn.className = 'video-btn';
+            btn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <span>${stockCode ? `播放${stockCode}分析` : '播放分析'}</span>
+            `;
+            
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                window.parent.postMessage({
+                    type: 'PLAY_VIDEO',
+                    data: { stockCode }
+                }, '*');
+            };
+            
+            message.appendChild(btn);
+        }
+
+        // 监听父窗口消息
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'INIT_CHAT') {
+                console.log('收到初始化消息:', event.data.url);
+                loadChat(event.data.url);
+            }
+        });
+
+        // 错误处理
+        window.onerror = (message, source, line, column, error) => {
+            showError(`发生错误: ${message}`);
+            console.error('详细错误:', error);
+        };
+    </script>
+</body>
+</html>

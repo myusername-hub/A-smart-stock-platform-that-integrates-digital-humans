@@ -1,5 +1,5 @@
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import "../../assets/iconfont.css"
 
@@ -7,19 +7,44 @@ export default {
   setup() {
     const router = useRouter()
     const searchQuery = ref('')
-    
+    const isLoggedIn = ref(false) // 是否已登录
+    const username = ref('') // 用户名
+
     // 页面跳转
     const goToPage = (path) => {
       router.push(path)
     }
-    
+
+    // 检查登录状态
+    const checkLoginStatus = () => {
+      const user = JSON.parse(localStorage.getItem('user'))
+      if (user && user.username) {
+        isLoggedIn.value = true
+        username.value = user.username
+      } else {
+        isLoggedIn.value = false
+        username.value = ''
+      }
+    }
+
+    // 模拟用户注销
+    const logout = () => {
+      localStorage.removeItem('user') // 清除本地存储
+      checkLoginStatus() // 更新状态
+    }
+
+    // 页面加载时检查登录状态
+    onMounted(() => {
+      checkLoginStatus()
+    })
+
     // 搜索功能
     const handleSearch = () => {
       if (!searchQuery.value.trim()) {
         alert('请输入股票代码或名称')
         return
       }
-      
+
       router.push({
         path: '/search',
         query: { q: searchQuery.value }
@@ -37,7 +62,10 @@ export default {
       searchQuery,
       goToPage,
       handleSearch,
-      handleKeyPress
+      handleKeyPress,
+      isLoggedIn,
+      username,
+      logout
     }
   }
 }
@@ -48,13 +76,31 @@ export default {
     <div class="header">
       <div class="nav">
         <div class="search-box">
-          <input type="text" placeholder="搜索股票..." class="search-input" />
-          <button class="search-btn"><i class="iconfont icon-sousuo"></i></button>
+          <input 
+            type="text" 
+            placeholder="搜索股票..." 
+            class="search-input" 
+            v-model="searchQuery" 
+            @keypress="handleKeyPress" 
+          />
+          <button 
+            class="search-btn" 
+            @click="handleSearch"
+          >
+            <i class="iconfont icon-sousuo"></i>
+          </button>
         </div>
         <div class="auth-links">
-          <a @click="goToPage('/login')" class="auth-link">登录</a>
-          <span class="divider">|</span>
-          <a @click="goToPage('/register')" class="auth-link">注册</a>
+          <!-- 动态显示登录/注册或欢迎信息 -->
+          <template v-if="isLoggedIn">
+            <span class="welcome-message">欢迎您，{{ username }}</span>
+            <a @click="logout" class="auth-link">注销</a>
+          </template>
+          <template v-else>
+            <a @click="goToPage('/login')" class="auth-link">登录</a>
+            <span class="divider">|</span>
+            <a @click="goToPage('/register')" class="auth-link">注册</a>
+          </template>
         </div>
       </div>
       <div class="scroll-container">
@@ -225,6 +271,11 @@ export default {
 
         .divider {
           color: rgba(230, 241, 255, 0.3);
+        }
+
+        .welcome-message {
+          color: #e6f1ff;
+          font-size: 14px;
         }
       }
     }

@@ -20,11 +20,13 @@ export default {
 
       loading.value = true
       try {
-        // TODO: 实现登录逻辑
+        // 模拟登录逻辑
         await new Promise(resolve => setTimeout(resolve, 1000))
-        router.push('/')
+        // 将用户名存储到 localStorage
+        localStorage.setItem('loggedInUser', formData.value.username)
+        router.push('/login') // 修改为跳转到登录界面
       } catch (error) {
-        console.error('登录失败:', error)
+        console.error('注册失败:', error)
       } finally {
         loading.value = false
       }
@@ -86,7 +88,7 @@ export default {
             :disabled="loading"
             :class="{ 'loading': loading }"
           >
-            {{ loading ? '登录中...' : '登录' }}
+            {{ loading ? '注册中...' : '注册' }}
           </button>
         </form>
       </div>

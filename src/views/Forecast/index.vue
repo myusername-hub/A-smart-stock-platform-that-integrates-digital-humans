@@ -1,53 +1,63 @@
 <template>
   <div class="forecast-container">
     <div class="search-bar">
-      <el-select v-model="selectedStock" filterable placeholder="请选择股票">
-        <el-option label="中国银行(601988)" value="601988" />
-      </el-select>
-      <el-button type="primary" @click="searchStock">查询</el-button>
+      <div class="search-wrapper">
+        <el-button type="primary" size="large" @click="searchStock">查询</el-button>
+      </div>
     </div>
     <div ref="chartRef" class="chart-container"></div>
   </div>
 </template>
 
 <script>
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { Search } from '@element-plus/icons-vue'
+
+const stockData = [
+  { label: '中国银行(601988)', value: '601988' },
+  { label: '工商银行(601398)', value: '601398' },
+  { label: '建设银行(601939)', value: '601939' },
+  { label: '农业银行(601288)', value: '601288' },
+  { label: '中国平安(601318)', value: '601318' },
+  { label: '招商银行(600036)', value: '600036' }
+]
+
+const historicalData = [
+  { value: 3.59, date: '2023-01' },
+  { value: 3.61, date: '2023-02' },
+  { value: 3.65, date: '2023-03' },
+  { value: 3.66, date: '2023-04' },
+  { value: 3.64, date: '2023-05' },
+  { value: 3.61, date: '2023-06' },
+  { value: 3.60, date: '2023-07' },
+  { value: 3.57, date: '2023-08' },
+  { value: 3.57, date: '2023-09' },
+  { value: 3.59, date: '2023-10' },
+  { value: 3.60, date: '2023-11' },
+  { value: 3.58, date: '2023-12' }
+]
+
+const forecastData = [
+  { value: 3.61, date: '2024-01' },
+  { value: 3.63, date: '2024-02' },
+  { value: 3.64, date: '2024-03' },
+  { value: 3.64, date: '2024-04' },
+  { value: 3.65, date: '2024-05' },
+  { value: 3.65, date: '2024-06' },
+  { value: 3.66, date: '2024-07' },
+  { value: 3.66, date: '2024-08' },
+  { value: 3.67, date: '2024-09' },
+  { value: 3.68, date: '2024-10' }
+]
 
 export default {
   name: 'Forecast',
+  components: { Search },
   setup() {
     const chartRef = ref(null)
-    const selectedStock = ref('601988')
+    const keyword = ref('')
     let chart = null
-
-    const historicalData = [
-      { value: 3.59, date: '2023-01' },
-      { value: 3.61, date: '2023-02' },
-      { value: 3.65, date: '2023-03' },
-      { value: 3.66, date: '2023-04' },
-      { value: 3.64, date: '2023-05' },
-      { value: 3.61, date: '2023-06' },
-      { value: 3.60, date: '2023-07' },
-      { value: 3.57, date: '2023-08' },
-      { value: 3.57, date: '2023-09' },
-      { value: 3.59, date: '2023-10' },
-      { value: 3.60, date: '2023-11' },
-      { value: 3.58, date: '2023-12' }
-    ]
-
-    const forecastData = [
-      { value: 3.61, date: '2024-01' },
-      { value: 3.63, date: '2024-02' },
-      { value: 3.64, date: '2024-03' },
-      { value: 3.64, date: '2024-04' },
-      { value: 3.65, date: '2024-05' },
-      { value: 3.65, date: '2024-06' },
-      { value: 3.66, date: '2024-07' },
-      { value: 3.66, date: '2024-08' },
-      { value: 3.67, date: '2024-09' },
-      { value: 3.68, date: '2024-10' }
-    ]
 
     const initChart = () => {
       if (chartRef.value) {
@@ -186,7 +196,6 @@ export default {
     })
 
     const searchStock = () => {
-      // 模拟数据更新
       const newHistoricalData = historicalData.map(item => ({
         ...item,
         value: +(item.value + (Math.random() - 0.5) * 0.1).toFixed(2)
@@ -197,7 +206,6 @@ export default {
         value: +(item.value + (Math.random() - 0.5) * 0.1).toFixed(2)
       }));
 
-      // 更新图表
       chart.setOption({
         series: [
           {
@@ -212,35 +220,50 @@ export default {
 
     return {
       chartRef,
-      selectedStock,
       searchStock
     }
   }
 }
 </script>
 
-<style scoped>
-@use '@/assets/theme' as theme;
+<style scoped lang="scss">
 .forecast-container {
   padding: 20px;
+  background-color: #f5f7fa;
+
+  .search-bar {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+
+    .search-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+
+  .chart-container {
+    width: 100%;
+    height: 500px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
 }
 
-.search-bar {
-  justify-content: center;
-  margin-bottom: 20px;
+:deep(.suggestion-item) {
   display: flex;
-  gap: 10px;
-}
-
-.chart-container {
-  width: 100%;
-  height: 500px;
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-:deep(.el-select) {
-  width: 200px;
+  justify-content: space-between;
+  align-items: center;
+  
+  .stock-code {
+    color: #909399;
+    font-size: 13px;
+  }
 }
 </style>

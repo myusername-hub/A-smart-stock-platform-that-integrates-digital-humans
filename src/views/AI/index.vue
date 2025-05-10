@@ -5,17 +5,23 @@
          ref="chatContainer"
          :style="{ left: chatPosition.x + 'px', top: chatPosition.y + 'px' }">
       <div class="chat-header" @mousedown.stop="startDragChat">
-        <h2>AI 助手</h2>
-        <div class="ai-buttons">
-          <!-- 添加本地视频按钮 -->
-          <div class="ai-button" @click.stop="openLocalVideo">
-            <el-icon><FolderOpened /></el-icon>
-          </div>
-          <div class="ai-button" @click.stop="toggleVideo">
-            <el-icon><VideoCamera /></el-icon>
-          </div>
-          <div class="ai-button" @click.stop="toggleChat">
-            <el-icon class="chat-icon"><ChatLineRound /></el-icon>
+        <div class="header-left">
+          <h2>AI 助手</h2>
+        </div>
+        <div class="header-right">
+          <div class="ai-buttons">
+            <div class="ai-button" @click.stop="openLocalVideo">
+              <el-icon><FolderOpened /></el-icon>
+            </div>
+            <div class="ai-button" @click.stop="toggleVideo">
+              <el-icon><VideoCamera /></el-icon>
+            </div>
+            <div class="ai-button" @click.stop="toggleChat">
+              <el-icon class="chat-icon"><ChatLineRound /></el-icon>
+            </div>
+            <div class="ai-button" @click.stop="playVideo">
+              <el-icon><VideoCamera /></el-icon>
+            </div>
           </div>
         </div>
       </div>
@@ -46,17 +52,26 @@
 
       <!-- 视频播放容器 -->
       <div v-if="showVideo" class="video-container">
-        <video 
-          ref="videoPlayer"
-          class="digital-human-video"
-          :src="config.videoUrl"
-          controls
-          autoplay
-        ></video>
-        <div class="close-video" @click="closeVideo">
-          <el-icon><Close /></el-icon>
+        <div class="video-wrapper">
+          <video 
+            ref="videoPlayer"
+            class="digital-human-video"
+            :src="config.videoUrl"
+            controls
+            autoplay
+          ></video>
+          <button class="close-btn" @click="closeVideo">
+            <el-icon :size="24" class="close-icon">
+              <Close />
+            </el-icon>
+          </button>
         </div>
       </div>
+    </div>
+
+    <!-- 悬浮视频按钮 -->
+    <div class="floating-video-btn" @click="openLocalVideo">
+      <el-icon><VideoCamera /></el-icon>
     </div>
 
     <!-- 悬浮按钮 -->
@@ -83,6 +98,8 @@
 <script>
 import { Comment, VideoCamera, Close, ChatLineRound, FolderOpened } from '@element-plus/icons-vue';
 import { AI_CONFIG } from '@/config/ai.config';
+import Video1 from '@/assets/videos/video1.mp4';
+import Video2 from '@/assets/videos/video2.mp4';
 
 export default {
   name: "AI",
@@ -97,16 +114,19 @@ export default {
     return {
       showChat: false,
       showVideo: false,
-      showChat: false,
-      showVideo: false,
+      clickCount: 0,
       config: {
         useCloud: true,
         iframeId: 'chatbot-iframe',
         shareId: AI_CONFIG.shareId,
         localUrl: AI_CONFIG.local.baseUrl,
         cloudUrl: AI_CONFIG.cloud.baseUrl,
-        videoUrl: '/src/assets/videos/digital-human.mp4',
-        videoList: [] // 存储视频列表
+        videoUrl: '',
+        defaultVideos: [
+          Video1,  // 使用导入的模块路径
+          Video2
+        ],
+        videoList: []
       },
       chatPosition: {
         x: Math.min(window.innerWidth - 720, window.innerWidth - 720), // 考虑到容器宽度700px + padding
@@ -126,9 +146,12 @@ export default {
     window.addEventListener('message', (event) => {
       if (event.data.type === 'playVideo') {
         this.showVideo = true;
-        // 这里可以根据消息内容选择要播放的视频
-        // this.config.videoUrl = ...
       }
+    });
+    
+    // 添加样式注入
+    this.$nextTick(() => {
+      this.injectStyles();
     });
   },
   beforeDestroy() {
@@ -173,7 +196,20 @@ export default {
         this.showChat = true;
       }
     },
-    // ... 其他现有方法保持不变 ...
+    playVideo() {
+      // 根据点击次数设置视频源
+      this.config.videoUrl = this.config.defaultVideos[this.clickCount % this.config.defaultVideos.length];
+      console.log(`播放视频 ${this.clickCount + 1}:`, this.config.videoUrl);
+
+      // 自动播放视频
+      this.showVideo = true;
+      if (!this.showChat) {
+        this.showChat = true;
+      }
+
+      // 切换到下一个视频索引
+      this.clickCount++;
+    },
     startDragChat(event) {
       if (event.target.closest('.ai-button')) return;
       event.preventDefault();
@@ -240,16 +276,16 @@ export default {
       }
       
       const doc = iframe.contentWindow.document;
-      
-      // 使用更准确的选择器来匹配 AI 回复
       const messages = doc.querySelectorAll('.answer-content');
-      console.log('找到消息数量:', messages.length);
       
       messages.forEach(message => {
         if (!message.querySelector('.video-btn')) {
           const btn = doc.createElement('button');
           btn.className = 'video-btn';
-          btn.innerHTML = '📹';
+          // 修改这里：使用 SVG 图标替换文本
+          btn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M21 6h-7.59l3.29-3.29L16 2l-4 4-4-4-.71.71L10.59 6H3c-1.1 0-2 .89-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.11-.9-2-2-2zm0 14H3V8h18v12zM9 10v8l7-4z"/>
+          </svg>`;
           btn.style.cssText = `
             position: absolute;
             right: 10px;
@@ -261,12 +297,15 @@ export default {
             background: #4e83fd;
             color: white;
             cursor: pointer;
-            font-size: 16px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             z-index: 9999;
             opacity: 1;
           `;
           
-          // 直接在消息容器中添加按钮
           message.style.position = 'relative';
           message.appendChild(btn);
           
@@ -276,13 +315,11 @@ export default {
         }
       });
 
-      // 监听新消息
       const observer = new MutationObserver(() => {
         console.log('检测到新消息');
         this.injectVideoButton();
       });
 
-      // 监听聊天容器的变化
       const chatWrapper = doc.querySelector('.answer-list') || doc.querySelector('.chat-wrapper');
       if (chatWrapper) {
         observer.observe(chatWrapper, { 
@@ -293,12 +330,37 @@ export default {
       }
     },
 
+    injectStyles() {
+      const iframe = document.querySelector('iframe');
+      if (!iframe || !iframe.contentWindow || !iframe.contentWindow.document) {
+        setTimeout(() => this.injectStyles(), 1000);
+        return;
+      }
+      
+      const doc = iframe.contentWindow.document;
+      const style = doc.createElement('style');
+      style.textContent = `
+        body, .chat-wrapper, .answer-wrapper, .question-wrapper {
+          background-color: #2a3a5c !important;
+          color: #fff !important;
+        }
+        .chat-item, .answer-content, .question-content {
+          background-color: #2a3a5c !important;
+          color: #fff !important;
+        }
+        .chat-input-wrapper {
+          background-color: #2a3a5c !important;
+        }
+      `;
+      doc.head.appendChild(style);
+    },
+
     handleIframeLoad() {
       console.log('iframe加载完成');
-      // 延迟执行注入以确保内容加载完成
       setTimeout(() => {
         this.injectVideoButton();
-        console.log('执行按钮注入');
+        this.injectStyles();
+        console.log('执行按钮和样式注入');
       }, 2000);
     }
   }
@@ -309,11 +371,12 @@ export default {
 @use '@/assets/theme' as theme;
 
 .ai-container {
+  background-color: #2a3a5c;
   .ai-chat-container {
     position: fixed;
     width: 700px;
     height: 500px;
-    background: white;
+    background-color: #2a3a5c; // 修改背景色为 #2a3a5c
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
@@ -328,9 +391,43 @@ export default {
       cursor: move;
       user-select: none;
 
-      h2 {
-        margin: 0;
-        color: rgb(57, 53, 53);
+      .header-left {
+        display: flex;
+        align-items: center;
+
+        h2 {
+          margin: 0;
+          color: rgb(57, 53, 53);
+        }
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        .video-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          z-index: 1000;
+          transition: background 0.3s;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+          }
+
+          el-icon {
+            font-size: 20px;
+          }
+        }
       }
 
       .ai-buttons {
@@ -347,6 +444,7 @@ export default {
           align-items: center;
           justify-content: center;
           cursor: pointer;
+          z-index: 1000;
 
           &:hover {
             background: rgba(255, 255, 255, 0.3);
@@ -369,39 +467,71 @@ export default {
       justify-content: center;
       z-index: 1001;
       
+      .video-wrapper {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
       .digital-human-video {
         width: 100%;
         height: auto;
         max-height: 100%;
       }
       
-      .close-video {
+      .close-btn {
         position: absolute;
         top: 10px;
         right: 10px;
-        padding: 5px;
-        font-size: 20px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
         color: white;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         z-index: 1002;
+        transition: all 0.3s;
+        padding: 0;
+
+        .close-icon {
+          width: 24px;
+          height: 24px;
+        }
         
         &:hover {
-          color: #f56c6c;
+          background: rgba(255, 255, 255, 0.3);
+          transform: scale(1.1);
+          .close-icon {
+            color: #f56c6c;
+          }
         }
       }
     }
 
     .chat-frame, .local-chat, .cloud-chat {
       height: calc(100% - 60px);
+      background-color: #2a3a5c !important;
       
       iframe {
         border: none;
         width: 100%;
         height: 100%;
+        background-color: transparent;
       }
 
-      :deep(.chat-input-container) {
-        max-height: 100px !important;
+      :deep(.chat-input-container),
+      :deep(.chat-wrapper),
+      :deep(.answer-wrapper),
+      :deep(.question-wrapper) {
+        background-color: #2a3a5c !important;
+        color: #fff !important;
       }
 
       :deep(.chat-input-box) {
@@ -410,17 +540,87 @@ export default {
       }
 
       :deep(.video-btn) {
-        opacity: 0;
+        opacity: 1;
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        padding: 8px;
+        border: none;
+        border-radius: 50%;
+        background: #4e83fd;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+        z-index: 9999;
         transition: opacity 0.3s;
-        
+
         &:hover {
-          opacity: 1;
           background: #3a6cd8 !important;
         }
       }
 
       :deep(.markdown-body:hover .video-btn) {
-        opacity: 0.8;
+        opacity: 1;
+      }
+    }
+
+    :deep(.markdown-body) {
+      background-color: #2a3a5c !important;
+      color: #fff !important;
+    }
+
+    :deep(.chat-wrapper) {
+      background-color: #2a3a5c !important;
+    }
+  }
+
+  .floating-video-btn {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: theme.$primary-gradient;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    transition: transform 0.3s, background 0.3s;
+
+    &:hover {
+      transform: scale(1.1);
+      background: #3a6cd8; // 替换 theme.$primary-hover 为具体颜色值
+    }
+
+    el-icon {
+      font-size: 24px;
+    }
+  }
+
+  .video-btn-container {
+    display: flex;
+    justify-content: center;
+    margin: 5px 0; // 向上移动按钮
+    position: relative;
+    top: -10px;
+
+    .video-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #4e83fd;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+
+      &:hover {
+        background: #3a6cd8;
       }
     }
   }

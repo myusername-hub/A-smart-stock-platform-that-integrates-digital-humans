@@ -10,6 +10,9 @@ export default defineConfig({
         compilerOptions: {
           isCustomElement: (tag) => tag.startsWith('el-')
         }
+      },
+      ssr: {
+        noExternal: ['element-plus']  // 如果使用了element-plus
       }
     })
   ],
@@ -27,6 +30,9 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  ssr: {
+    format: 'cjs'
   },
   build: {
     chunkSizeWarningLimit: 1500,
