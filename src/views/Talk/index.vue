@@ -35,8 +35,27 @@ const mockComments = [
 
 // 获取评论数据
 const fetchComments = async () => {
-  // 模拟API调用
-  comments.value = mockComments
+  // 从localStorage获取评论数据
+  const savedComments = localStorage.getItem(`comments_${stockCode}`)
+  if (savedComments) {
+    comments.value = JSON.parse(savedComments)
+  } else {
+    comments.value = mockComments
+    localStorage.setItem(`comments_${stockCode}`, JSON.stringify(mockComments))
+  }
+}
+
+// 更新讨论量
+const updateDiscussionCount = () => {
+  const savedDiscussions = localStorage.getItem('stockDiscussions')
+  if (savedDiscussions) {
+    const discussions = JSON.parse(savedDiscussions)
+    const stockIndex = discussions.findIndex(item => item.code === stockCode)
+    if (stockIndex !== -1) {
+      discussions[stockIndex].discussionCount = comments.value.length
+      localStorage.setItem('stockDiscussions', JSON.stringify(discussions))
+    }
+  }
 }
 
 // 发布评论
@@ -56,6 +75,11 @@ const submitComment = async () => {
   
   comments.value.unshift(newCommentData)
   newComment.value = ''
+  
+  // 保存评论到localStorage
+  localStorage.setItem(`comments_${stockCode}`, JSON.stringify(comments.value))
+  // 更新讨论量
+  updateDiscussionCount()
 }
 
 // 点赞功能
@@ -205,6 +229,7 @@ onMounted(() => {
 }
 
 .comment-input {
+  height: 80px;
   position: fixed;
   bottom: 0;
   left: 0;

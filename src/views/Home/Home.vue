@@ -156,7 +156,7 @@ export default {
               <i class="iconfont icon-leftfont-123"></i>讨论区
             </p>
             <span class="body">和其他用户交流的开放平台，用户可以在论坛区域发帖留言和回帖交流，帮助用户交换信息、交流心得体会。</span>
-            <a @click="goToPage('/talk')">点击进入 ></a>
+            <a @click="goToPage('/intalk')">点击进入 ></a>
           </div>
         </li>
       </ul>

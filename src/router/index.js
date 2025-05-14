@@ -9,6 +9,7 @@ import AI from '../views/AI/index.vue'
 import StockDetail from '../views/StockDetail/index.vue'
 import Login from '../views/Login/index.vue'
 import Register from '../views/Register/index.vue'
+import Intalk from '../views/Talk/Intalk.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -61,11 +62,16 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login
-  },,
+  },
   {
     path: '/register',
     name: 'Register',
     component: Register
+  },
+  {
+    path: '/intalk',
+    name: 'intalk',
+    component: () => import('@/views/Talk/Intalk.vue')
   }
 ]
 

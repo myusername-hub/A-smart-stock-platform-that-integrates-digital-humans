@@ -393,13 +393,27 @@ onMounted(() => {
 
 .buy-btn,
 .sell-btn {
-  width: 50px;
-  padding: 8px 0;
+  padding: 8px 20px;
   border: none;
   border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
   transition: opacity 0.3s;
+}
+
+.buy-btn:hover,
+.sell-btn:hover {
+  opacity: 0.8;
+}
+
+.buy-btn {
+  background-color: #f56c6c;
+  color: white;
+}
+
+.sell-btn {
+  background-color: #67c23a;
+  color: white;
 }
 
 .talk-btn {
@@ -415,9 +429,7 @@ onMounted(() => {
   transition: opacity 0.3s;
 }
 
-.talk-btn:hover,
-.buy-btn:hover,
-.sell-btn:hover {
+.talk-btn:hover {
   opacity: 0.8;
 }
 </style>

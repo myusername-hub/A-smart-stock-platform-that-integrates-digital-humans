@@ -10,6 +10,7 @@ export default {
     const error = ref(null)
     const currentPage = ref(1)
     const pageSize = ref(5)  // 每页显示5条数据
+    const searchQuery = ref('')
 
     const hasErrors = computed(() => {
       return stockData.value.some(stock => stock.message);
@@ -59,6 +60,18 @@ export default {
       }
     }
 
+    const handleSearch = () => {
+      if (!searchQuery.value) {
+        fetchStockData()
+        return
+      }
+      const query = searchQuery.value.toUpperCase()
+      const filteredList = validStockData.value.filter(stock => 
+        stock.ts_code.includes(query) || getStockName(stock.ts_code).includes(query)
+      )
+      stockData.value = filteredList
+    }
+
     onMounted(() => {
       fetchStockData()
       const timer = setInterval(fetchStockData, 30000)
@@ -76,7 +89,9 @@ export default {
       totalPages,
       getStockName,
       nextPage,
-      prevPage
+      prevPage,
+      searchQuery,
+      handleSearch
     }
   }
 }
@@ -84,6 +99,20 @@ export default {
 
 <template>
   <div class="now-page">
+    <!-- 添加搜索栏 -->
+    <div class="search-wrapper">
+      <div class="search-bar">
+        <input 
+          v-model="searchQuery"
+          type="text" 
+          placeholder="输入股票代码或名称查询" 
+          class="search-input"
+          @keyup.enter="handleSearch"
+        >
+        <button class="search-btn" @click="handleSearch">查询</button>
+      </div>
+    </div>
+
     <div class="header">
       <h2>实时行情</h2>
       <div v-if="error" class="error-message">
@@ -163,8 +192,7 @@ export default {
 <style scoped>
 .now-page {
   padding: 20px;
-  color: #1b1a1a;  
-  background-color: #fff;  
+  background-color: #fff;
 }
 
 .header {
@@ -193,45 +221,44 @@ export default {
 }
 
 .stock-table {
-  background: #ffffff;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 20px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.table-header,
-.stock-row {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  padding: 15px;
-  align-items: center;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: center;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
 }
 
 .table-header {
-  background: #f5f5f5;
-  font-weight: bold;
-  color: #252424;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  padding: 12px 8px;
+  background-color: #f5f7fa;
+  font-weight: 500;
+  color: #606266;
+  border: 1px solid #ebeef5;
 }
 
 .stock-row {
-  border-bottom: 1px solid #eee;
-  transition: background-color 0.3s;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  padding: 12px 8px;
+  border: 1px solid #ebeef5;
+  transition: background-color 0.2s ease;
 }
 
 .stock-row:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background-color: #f5f7fa;
 }
 
 .price-up {
-  color: #00c853;
-  font-weight: bold;
+  color: #f56c6c;
+  font-weight: 500;
 }
 
 .price-down {
-  color: #ff4d4f;
-  font-weight: bold;
+  color: #67c23a;
+  font-weight: 500;
 }
 
 .pagination {
@@ -240,26 +267,27 @@ export default {
   align-items: center;
   padding: 20px;
   gap: 20px;
-  border-top: 1px solid #eee;
+  background-color: #fff;
 }
 
 .page-btn {
   padding: 8px 16px;
-  background: #1a1a1a;
+  background-color: #409eff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s;
 }
 
 .page-btn:hover:not(:disabled) {
-  background: #333;
+  opacity: 0.8;
 }
 
 .page-btn:disabled {
-  background: #ccc;
+  background-color: #909399;
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .page-info {
@@ -281,5 +309,38 @@ export default {
   text-align: left;
   padding-left: 20px;
   font-weight: bold;
+}
+
+.search-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.search-bar {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  width: 300px;
+}
+
+.search-btn {
+  padding: 8px 15px;
+  background-color: #409eff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.search-btn:hover {
+  background-color: #66b1ff;
 }
 </style>

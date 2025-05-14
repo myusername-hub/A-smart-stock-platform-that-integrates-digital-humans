@@ -8,7 +8,6 @@ const router = useRouter()
 const stockList = ref([])
 const loading = ref(false)
 const error = ref(null)
-const searchQuery = ref('')
 const collectedStocks = ref([]) // 改用数组存储已收藏的股票代码
 
 // 数据处理函数
@@ -49,19 +48,6 @@ const fetchStockData = async () => {
   } finally {
     loading.value = false
   }
-}
-
-// 搜索功能
-const handleSearch = () => {
-  if (!searchQuery.value) {
-    fetchStockData()
-    return
-  }
-  const query = searchQuery.value.toUpperCase()
-  const filteredList = stockList.value.filter(stock => 
-    stock.code.includes(query) || stock.name.includes(query)
-  )
-  stockList.value = filteredList
 }
 
 // 跳转到详情页
@@ -107,20 +93,7 @@ onMounted(() => {
 
 <template>
   <div class="recommend-container">
-    <div class="search-wrapper">
-      <div class="search-bar">
-        <input 
-          v-model="searchQuery"
-          type="text" 
-          placeholder="输入股票代码或名称查询" 
-          class="search-input"
-          @keyup.enter="handleSearch"
-        >
-        <button class="search-btn" @click="handleSearch">查询</button>
-      </div>
-      
-      <h2 class="title">股票行情</h2>
-    </div>
+    <h2 class="title">今日推荐股票</h2>
 
     <!-- 错误提示 -->
     <div v-if="error" class="error-message">
@@ -199,39 +172,6 @@ onMounted(() => {
 <style scoped>
 .recommend-container {
   padding: 20px;
-}
-
-.search-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.search-bar {
-  margin-bottom: 20px;
-  display: flex;
-  gap: 10px;
-}
-
-.search-input {
-  padding: 8px 12px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  width: 300px;
-}
-
-.search-btn {
-  padding: 8px 15px;
-  background-color: #409eff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.search-btn:hover {
-  background-color: #66b1ff;
 }
 
 .title {
