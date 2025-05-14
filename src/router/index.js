@@ -43,6 +43,11 @@ const routes = [
     component: Talk
   },
   {
+    path: '/talk/:code',
+    name: 'talk',
+    component: () => import('@/views/Talk/index.vue')
+  },
+  {
     path: '/ai',
     name: 'AI',
     component: AI

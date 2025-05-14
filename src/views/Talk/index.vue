@@ -1,191 +1,137 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+const stockCode = route.params.code
+const comments = ref([])
+const newComment = ref('')
+
+// 获取评论数据
+const fetchComments = async () => {
+  // TODO: 从后端获取评论数据
+  comments.value = []
+}
+
+// 发布评论
+const submitComment = async () => {
+  if (!newComment.value.trim()) return
+  // TODO: 提交评论到后端
+  newComment.value = ''
+}
+
+onMounted(() => {
+  fetchComments()
+})
+</script>
+
 <template>
-  <div class="discussion-container">
-    <!-- 讨论区标题 -->
-    <div class="discussion-header">
-      <h2 class="discussion-title">
-        <i class="iconfont icon-discuss"></i> 讨论区
-      </h2>
+  <div class="talk-container">
+    <div class="header">
+      <h2>{{ stockCode }} 讨论区</h2>
     </div>
 
-    <!-- 讨论内容 -->
-    <div class="discussion-content card">
-      <div class="discussion-item">
-        <p class="discussion-text">这支股票不错</p>
-        <p class="discussion-meta">
-          由 <span class="author">am</span> 发表于 2024/03/16 20:36:13 | 最后回复 2024/03/16 20:36:13
-        </p>
+    <div class="comment-list">
+      <div v-if="comments.length" class="comments">
+        <div v-for="comment in comments" :key="comment.id" class="comment-item">
+          <div class="comment-header">
+            <span class="username">{{ comment.username }}</span>
+            <span class="time">{{ comment.time }}</span>
+          </div>
+          <div class="comment-content">{{ comment.content }}</div>
+        </div>
       </div>
+      <div v-else class="empty-message">暂无评论</div>
     </div>
 
-    <!-- 分页 -->
-    <div class="pagination">
-      <button class="btn btn-blue">1</button>
-      <button class="btn btn-blue">»</button>
-    </div>
-
-    <!-- 发表新主题 -->
-    <div class="new-topic card">
-      <h3 class="section-title">+ 发表新主题</h3>
-      <form class="new-topic-form">
-        <div class="form-group">
-          <input
-            type="text"
-            placeholder="请输入标题"
-            class="input"
-          />
-        </div>
-        <div class="form-group">
-          <textarea
-            placeholder="请输入内容"
-            rows="5"
-            class="textarea"
-          ></textarea>
-        </div>
-        <div class="form-group">
-          <input
-            type="text"
-            placeholder="相关股票（可选）"
-            class="input"
-          />
-        </div>
-        <button type="submit" class="btn btn-green">发表主题</button>
-      </form>
+    <div class="comment-input">
+      <textarea 
+        v-model="newComment"
+        placeholder="说说你的想法..."
+        rows="3"
+      ></textarea>
+      <button @click="submitComment">发布</button>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: "Discussion",
-};
-</script>
-
 <style scoped>
-@use '@/assets/theme' as theme;
-.discussion-container {
+.talk-container {
   padding: 20px;
-  background: #f9f9f9;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  color: #2c3e50;
-  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+.header {
   margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ebeef5;
 }
 
-.discussion-header {
-  margin-bottom: 20px;
+.comment-list {
+  margin-bottom: 100px;
 }
 
-.discussion-title {
-  font-size: 1.8rem;
-  color: #2c3e50;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.discussion-content {
+.comment-item {
   padding: 15px;
+  border-bottom: 1px solid #ebeef5;
 }
 
-.discussion-item {
-  margin-bottom: 15px;
-}
-
-.discussion-text {
-  font-size: 1.2rem;
-  color: #2c3e50;
-  margin-bottom: 5px;
-}
-
-.discussion-meta {
-  font-size: 0.9rem;
-  color: #7f8c8d;
-}
-
-.author {
-  font-weight: bold;
-  color: #3498db;
-}
-
-.pagination {
+.comment-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.username {
+  color: #409eff;
+}
+
+.time {
+  color: #909399;
+}
+
+.comment-content {
+  line-height: 1.5;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 40px;
+  color: #909399;
+}
+
+.comment-input {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 15px 20px;
+  background-color: #fff;
+  box-shadow: 0 -2px 12px 0 rgba(0,0,0,0.1);
+  display: flex;
   gap: 10px;
-  margin-bottom: 20px;
 }
 
-.new-topic {
-  padding: 20px;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  margin-bottom: 15px;
-  color: #2c3e50;
-  border-bottom: 2px solid #b3d4fc;
-  padding-bottom: 5px;
-}
-
-.new-topic-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.input,
-.textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #dceefb;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #2c3e50;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-
-.textarea {
+.comment-input textarea {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
   resize: none;
 }
 
-.btn {
-  padding: 12px 24px;
+.comment-input button {
+  padding: 0 20px;
+  background-color: #409eff;
+  color: white;
   border: none;
-  border-radius: 50px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: bold;
-  transition: all 0.3s ease;
 }
 
-.btn-blue {
-  background: linear-gradient(135deg, #66b3ff, #4da6ff);
-  color: white;
-}
-
-.btn-blue:hover {
-  background: linear-gradient(135deg, #4da6ff, #3498db);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-}
-
-.btn-green {
-  background: linear-gradient(135deg, #28a745, #218838);
-  color: white;
-}
-
-.btn-green:hover {
-  background: linear-gradient(135deg, #218838, #1e7e34);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+.comment-input button:hover {
+  opacity: 0.8;
 }
 </style>

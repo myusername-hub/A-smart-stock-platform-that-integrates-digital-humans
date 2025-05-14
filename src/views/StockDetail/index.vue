@@ -31,11 +31,14 @@
 
     <div class="trading-info">
       <h3>交易实况 (价格/成交量)</h3>
-      <div class="trade-rows">
+      <div v-if="tradeList.length" class="trade-rows">
         <div class="trade-row" v-for="(trade, index) in tradeList" :key="index">
           <span>买{{ index + 1 }}: {{ trade.buyPrice }} / {{ trade.buyVolume }}</span>
           <span>卖{{ index + 1 }}: {{ trade.sellPrice }} / {{ trade.sellVolume }}</span>
         </div>
+      </div>
+      <div v-else class="no-trade">
+        暂无交易记录
       </div>
     </div>
 
@@ -55,6 +58,17 @@
       </div>
       <div id="klineChart" style="width: 100%; height: 500px;"></div>
     </div>
+
+    <div class="trade-buttons">
+      <button class="talk-btn" @click="goToTalk">
+        <i class="iconfont icon-comment"></i>
+        讨论区
+      </button>
+      <div class="operation-btns">
+        <button class="buy-btn" @click="handleBuy">买入</button>
+        <button class="sell-btn" @click="handleSell">卖出</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -62,27 +76,23 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import axios from 'axios'
 
 const router = useRouter()
 const stockData = ref(JSON.parse(localStorage.getItem('currentStock')))
 
-// 模拟数据
+// 使用真实数据
 const priceInfo = ref({
-  currentPrice: '10.600',
-  changeRate: 3.62,
-  prevClose: '10.230',
-  openPrice: '10.550',
-  highPrice: '10.750',
-  lowPrice: '10.500'
+  currentPrice: stockData.value?.price || '-',
+  changeRate: stockData.value?.changeRate || 0,
+  prevClose: stockData.value?.preClose || '-',
+  openPrice: stockData.value?.open || '-',
+  highPrice: stockData.value?.high || '-',
+  lowPrice: stockData.value?.low || '-'
 })
 
-const tradeList = ref([
-  { buyPrice: '10.590', buyVolume: '3720', sellPrice: '10.600', sellVolume: '8129' },
-  { buyPrice: '10.580', buyVolume: '3282', sellPrice: '10.610', sellVolume: '9769' },
-  { buyPrice: '10.570', buyVolume: '6211', sellPrice: '10.620', sellVolume: '12619' },
-  { buyPrice: '10.560', buyVolume: '12083', sellPrice: '10.630', sellVolume: '9550' },
-  { buyPrice: '10.550', buyVolume: '18880', sellPrice: '10.640', sellVolume: '11234' }
-])
+// 交易记录数据（如果没有实时数据，则显示为空）
+const tradeList = ref([])
 
 // K线周期选项
 const periods = [
@@ -93,69 +103,120 @@ const periods = [
 ]
 const currentPeriod = ref('day')
 
-// 生成不同周期的K线数据
-const generateKLineData = (period) => {
-  const basePrice = 10
-  const data = []
-  const now = new Date()
-  
-  // 根据不同周期生成对应的数据点数量和时间间隔
-  const getTimePoints = () => {
-    switch(period) {
-      case 'day':
-        // 一天内每半小时一个数据点，交易时间9:30-15:00
-        return Array.from({ length: 12 }, (_, i) => {
-          const time = new Date(now)
-          time.setHours(9, 30 + i * 30, 0, 0)
-          return time
-        })
-      case 'week':
-        // 一周内每天的数据
-        return Array.from({ length: 7 }, (_, i) => {
-          const time = new Date(now)
-          time.setDate(time.getDate() - i)
-          return time
-        })
-      case 'month':
-        // 一个月内每天的数据
-        return Array.from({ length: 30 }, (_, i) => {
-          const time = new Date(now)
-          time.setDate(time.getDate() - i)
-          return time
-        })
-      case 'year':
-        // 一年内每天的数据
-        return Array.from({ length: 365 }, (_, i) => {
-          const time = new Date(now)
-          time.setDate(time.getDate() - i)
-          return time
-        })
+const fetchKLineData = async () => {
+  try {
+    // 去掉可能的后缀并补全为6位
+    const code = (stockData.value?.code || '688111').split('.')[0].padStart(6, '0')
+    console.log('请求K线数据，代码:', code)
+    
+    const url = `http://localhost:5000/api/stock_kline_data/${code}?period=${currentPeriod.value}`
+    console.log('请求URL:', url)
+    
+    const response = await axios.get(url)
+    
+    if (response.status === 200 && Array.isArray(response.data)) {
+      console.log('成功获取数据，条数:', response.data.length)
+      return response.data
     }
+    
+    console.error('响应格式错误:', response)
+    return []
+  } catch (error) {
+    console.error('请求失败:', error.response || error)
+    return []
+  }
+}
+
+const updateChart = async () => {
+  const chartDom = document.getElementById('klineChart')
+  if (!chartDom) return
+  
+  const myChart = echarts.getInstanceByDom(chartDom) || echarts.init(chartDom)
+  const klineData = await fetchKLineData()
+  
+  if (!klineData || klineData.length === 0) {
+    console.error('未获取到K线数据')
+    return
   }
 
-  const timePoints = getTimePoints()
-  
-  // 生成每个时间点的数据
-  timePoints.forEach(time => {
-    const volatility = period === 'day' ? 0.5 : 
-                      period === 'week' ? 1 :
-                      period === 'month' ? 2 : 3
-    
-    const open = basePrice + Math.random() * volatility - volatility/2
-    const close = open + Math.random() * volatility - volatility/2
-    const low = Math.min(open, close) - Math.random() * volatility/2
-    const high = Math.max(open, close) + Math.random() * volatility/2
-    const volume = Math.round(Math.random() * 10000)
-    
-    // 根据不同周期格式化日期
-    const dateStr = period === 'day' ? 
-      `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}` :
-      time.toISOString().split('T')[0]
-    
-    data.unshift([dateStr, open, close, low, high, volume])
-  })
-  
-  return data
+  const option = {
+    title: { 
+      text: `${stockData.value?.name} - ${
+        currentPeriod.value === 'day' ? '日K(分时)' : 
+        currentPeriod.value === 'week' ? '周K(7天)' : 
+        currentPeriod.value === 'month' ? '月K(30天)' : '年K(365天)'
+      }`,
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      formatter: function (params) {
+        const data = params[0].data
+        return `日期：${params[0].name}<br/>
+                开盘：${data[0]}<br/>
+                收盘：${data[1]}<br/>
+                最低：${data[2]}<br/>
+                最高：${data[3]}<br/>`
+      }
+    },
+    grid: {
+      left: '10%',
+      right: '10%',
+      bottom: '15%',
+      top: '10%'
+    },
+    xAxis: {
+      type: 'category',
+      data: klineData.map(item => item.trade_date),
+      boundaryGap: true,
+      axisLine: { onZero: false },
+      splitLine: { show: false }
+    },
+    yAxis: {
+      scale: true,
+      splitArea: { show: true }
+    },
+    dataZoom: [
+      {
+        type: 'inside',
+        start: 0,
+        end: 100
+      },
+      {
+        show: true,
+        type: 'slider',
+        bottom: 0,
+        start: 0,
+        end: 100
+      }
+    ],
+    series: [
+      {
+        name: '价格区间',
+        type: 'candlestick',
+        data: klineData.map(item => ([
+          parseFloat(item.open),  // 开盘价
+          parseFloat(item.close), // 收盘价
+          parseFloat(item.low),   // 最低价
+          parseFloat(item.high)   // 最高价
+        ])),
+        itemStyle: {
+          color: '#ef232a',
+          color0: '#14b143',
+          borderColor: '#ef232a',
+          borderColor0: '#14b143'
+        }
+      }
+    ]
+  }
+
+  try {
+    myChart.setOption(option, true)
+    console.log('图表已更新')
+  } catch (error) {
+    console.error('图表更新失败:', error)
+  }
 }
 
 const changePeriod = (period) => {
@@ -163,87 +224,11 @@ const changePeriod = (period) => {
   updateChart()
 }
 
-const updateChart = () => {
-  const chartDom = document.getElementById('klineChart')
-  if (!chartDom) return
-  
-  const myChart = echarts.getInstanceByDom(chartDom) || echarts.init(chartDom)
-  const klineData = generateKLineData(currentPeriod.value)
-  
-  // 计算价格范围
-  const prices = klineData.reduce((acc, item) => {
-    acc.push(item[1], item[2], item[3], item[4])
-    return acc
-  }, [])
-  const minPrice = Math.min(...prices)
-  const maxPrice = Math.max(...prices)
-  const priceRange = maxPrice - minPrice
-  
-  const option = {
-    title: {
-      show: false  // 隐藏echarts的标题
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross'
-      }
-    },
-    legend: {
-      data: ['K线', 'MA5', 'MA10', 'MA20']
-    },
-    grid: {
-      left: '10%',
-      right: '10%',
-      bottom: '15%',
-      top: '10%',
-      height: 'auto'
-    },
-    xAxis: {
-      type: 'category',
-      data: klineData.map(item => item[0]),
-      scale: true,
-      boundaryGap: true,
-      axisLine: { onZero: false },
-      splitLine: { show: false },
-      min: 'dataMin',
-      max: 'dataMax'
-    },
-    yAxis: {
-      scale: true,
-      splitArea: { show: true },
-      min: minPrice - priceRange * 0.1,
-      max: maxPrice + priceRange * 0.1
-    },
-    dataZoom: [
-      {
-        type: 'inside',
-        start: 0,  // 修改为0，显示全部数据
-        end: 100
-      },
-      {
-        show: true,
-        type: 'slider',
-        top: '90%',
-        start: 0,  // 修改为0，显示全部数据
-        end: 100
-      }
-    ],
-    series: [{
-      name: 'K线',
-      type: 'candlestick',
-      data: klineData.map(item => item.slice(1, 5)),
-      itemStyle: {
-        color: '#ef232a',
-        color0: '#14b143',
-        borderColor: '#ef232a',
-        borderColor0: '#14b143'
-      },
-      barWidth: '70%'  // 控制K线宽度
-    }]
-  }
-
-  myChart.setOption(option, true)  // 添加 true 参数来强制更新
+const goToTalk = () => {
+  router.push({
+    name: 'talk',
+    params: { code: stockData.value.code }
+  })
 }
 
 onMounted(() => {
@@ -379,5 +364,60 @@ onMounted(() => {
 
 .period-buttons button:hover {
   border-color: #409eff;
+}
+
+.no-trade {
+  text-align: center;
+  padding: 20px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.trade-buttons {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #fff;
+  box-shadow: 0 -2px 12px 0 rgba(0,0,0,0.1);
+}
+
+.operation-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.buy-btn,
+.sell-btn {
+  width: 50px;
+  padding: 8px 0;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.talk-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  background-color: #409eff;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.talk-btn:hover,
+.buy-btn:hover,
+.sell-btn:hover {
+  opacity: 0.8;
 }
 </style>
