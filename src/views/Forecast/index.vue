@@ -169,10 +169,20 @@ const updateChartData = (stockCode) => {
           trigger: 'axis',
           formatter: function(params) {
             const date = params[0].axisValue
-            return `日期：${date}<br/>` + params
-              .filter(param => param.value !== null)
-              .map(param => `${param.seriesName}：${param.value}`)
-              .join('<br/>')
+            // 根据日期判断是否为预测数据
+            const isInForecastRange = new Date(date) > new Date(mockData[mockData.length - 1].trade_date)
+            
+            if (isInForecastRange) {
+              const forecastPoint = params.find(p => p.seriesName === '预测数据')
+              return forecastPoint && forecastPoint.value !== null 
+                ? `日期：${date}<br/>预测价格：${forecastPoint.value}` 
+                : ''
+            } else {
+              const historyPoint = params.find(p => p.seriesName === '历史数据')
+              return historyPoint && historyPoint.value !== null 
+                ? `日期：${date}<br/>历史价格：${historyPoint.value}` 
+                : ''
+            }
           }
         },
         legend: {

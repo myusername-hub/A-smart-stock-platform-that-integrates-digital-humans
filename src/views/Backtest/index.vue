@@ -6,15 +6,15 @@
       <div class="account-stats">
         <div class="stat-item">
           <p>总资产</p>
-          <h2>0.00</h2>
+          <h2>{{ account.totalAssets.toFixed(2) }}</h2>
         </div>
         <div class="stat-item">
           <p>可用资产（现金）</p>
-          <h2>0.00</h2>
+          <h2>{{ account.availableCash.toFixed(2) }}</h2>
         </div>
         <div class="stat-item">
           <p>当前收益率</p>
-          <h2 class="negative">0%</h2>
+          <h2 :class="{ negative: account.profitRate < 0 }">{{ account.profitRate }}%</h2>
         </div>
       </div>
     </div>
@@ -35,8 +35,19 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
+          <tr v-if="holdings.length === 0">
             <td colspan="7" class="empty-row">暂无持仓数据</td>
+          </tr>
+          <tr v-for="holding in holdings" :key="holding.code">
+            <td>{{ holding.code }}</td>
+            <td>{{ holding.name }}</td>
+            <td>{{ holding.avgPrice.toFixed(2) }}</td>
+            <td>{{ holding.currentPrice.toFixed(2) }}</td>
+            <td>{{ ((holding.currentPrice - holding.avgPrice) / holding.avgPrice * 100).toFixed(2) }}%</td>
+            <td>{{ holding.quantity }}</td>
+            <td>
+              <button class="btn btn-red" @click="sellAll(holding.code)">清仓</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -45,10 +56,11 @@
     <!-- 交易操作 -->
     <div class="trade-operations card">
       <h3 class="section-title">交易操作</h3>
-      <form class="trade-form">
+      <form class="trade-form" @submit="handleTrade">
         <div class="form-group">
           <label for="stock">股票</label>
           <input
+            v-model="tradeForm.stockCode"
             type="text"
             id="stock"
             placeholder="股票代码/名称/首字母..."
@@ -59,28 +71,192 @@
           <label>操作</label>
           <div class="radio-group">
             <label>
-              <input type="radio" name="action" value="buy" checked />
+              <input type="radio" v-model="tradeForm.action" value="buy" />
               买入
             </label>
             <label>
-              <input type="radio" name="action" value="sell" />
+              <input type="radio" v-model="tradeForm.action" value="sell" />
               卖出
             </label>
           </div>
         </div>
         <div class="form-group">
           <label for="quantity">数量</label>
-          <input type="number" id="quantity" placeholder="100" class="input" />
+          <input
+            v-model.number="tradeForm.quantity"
+            type="number"
+            id="quantity"
+            placeholder="100"
+            class="input"
+          />
         </div>
-        <button type="submit" class="btn btn-blue">提交</button>
+        <button type="submit" class="btn" :class="tradeForm.action === 'buy' ? 'btn-blue' : 'btn-red'">
+          {{ tradeForm.action === 'buy' ? '买入' : '卖出' }}
+        </button>
       </form>
     </div>
   </div>
 </template>
 
 <script>
+import { ref, onMounted } from "vue";
+import { ElMessage } from "element-plus";
+import { stockNameMap } from '@/utils/stockMap'; // 导入股票映射表
+
 export default {
   name: "Backtest",
+  setup() {
+    const account = ref({
+      totalAssets: 1000000, // 初始资金100万
+      availableCash: 1000000,
+      profitRate: 0
+    });
+    
+    const holdings = ref([]); // 当前持仓
+    const tradeForm = ref({
+      stockCode: '',
+      action: 'buy',
+      quantity: 100
+    });
+
+    // 验证股票代码/名称
+    const validateStock = (input) => {
+      // 检查是否为股票代码
+      if (stockNameMap[input]) {
+        return {
+          code: input,
+          name: stockNameMap[input]
+        };
+      }
+      
+      // 检查是否为股票名称
+      const stockCodes = Object.entries(stockNameMap).find(([code, name]) => name === input);
+      if (stockCodes) {
+        tradeForm.value.stockCode = stockCodes[0];
+        return {
+          code: stockCodes[0],
+          name: stockCodes[1]
+        };
+      }
+      
+      return false;
+    };
+
+    // 初始化数据
+    onMounted(() => {
+      const savedAccount = localStorage.getItem('backtest_account');
+      const savedHoldings = localStorage.getItem('backtest_holdings');
+      
+      if (savedAccount) {
+        account.value = JSON.parse(savedAccount);
+      }
+      if (savedHoldings) {
+        holdings.value = JSON.parse(savedHoldings);
+      }
+    });
+
+    // 保存数据到本地存储
+    const saveToStorage = () => {
+      localStorage.setItem('backtest_account', JSON.stringify(account.value));
+      localStorage.setItem('backtest_holdings', JSON.stringify(holdings.value));
+    };
+
+    // 处理交易提交
+    const handleTrade = (e) => {
+      e.preventDefault();
+      
+      // 验证表单
+      if (!tradeForm.value.stockCode || !tradeForm.value.quantity) {
+        ElMessage.warning('请填写完整信息');
+        return;
+      }
+
+      // 验证股票并获取股票信息
+      const stockInfo = validateStock(tradeForm.value.stockCode);
+      if (!stockInfo) {
+        ElMessage.error('没有此股票名称/代码');
+        return;
+      }
+
+      const mockPrice = 10; // 模拟当前价格，实际应该从行情数据获取
+      const amount = mockPrice * tradeForm.value.quantity;
+
+      if (tradeForm.value.action === 'buy') {
+        // 检查资金是否足够
+        if (amount > account.value.availableCash) {
+          ElMessage.error('可用资金不足');
+          return;
+        }
+
+        // 更新账户和持仓
+        account.value.availableCash -= amount;
+        
+        const existingHolding = holdings.value.find(h => h.code === stockInfo.code);
+        if (existingHolding) {
+          existingHolding.quantity += tradeForm.value.quantity;
+          existingHolding.avgPrice = (existingHolding.avgPrice + mockPrice) / 2;
+        } else {
+          holdings.value.push({
+            code: stockInfo.code,
+            name: stockInfo.name || '未知',
+            quantity: tradeForm.value.quantity,
+            avgPrice: mockPrice,
+            currentPrice: mockPrice
+          });
+        }
+      } else {
+        // 卖出逻辑...
+        const holding = holdings.value.find(h => h.code === stockInfo.code);
+        if (!holding || holding.quantity < tradeForm.value.quantity) {
+          ElMessage.error('持仓不足');
+          return;
+        }
+
+        account.value.availableCash += amount;
+        holding.quantity -= tradeForm.value.quantity;
+        if (holding.quantity === 0) {
+          holdings.value = holdings.value.filter(h => h.code !== stockInfo.code);
+        }
+      }
+
+      // 更新总资产和收益率
+      const totalHoldingsValue = holdings.value.reduce((sum, h) => sum + h.quantity * h.currentPrice, 0);
+      account.value.totalAssets = account.value.availableCash + totalHoldingsValue;
+      account.value.profitRate = ((account.value.totalAssets - 1000000) / 1000000 * 100).toFixed(2);
+
+      // 保存到本地存储
+      saveToStorage();
+      
+      ElMessage.success('交易成功');
+      tradeForm.value.quantity = 100; // 重置表单
+    };
+
+    const sellAll = (stockCode) => {
+      const holding = holdings.value.find(h => h.code === stockCode);
+      if (!holding) return;
+
+      const amount = holding.currentPrice * holding.quantity;
+      account.value.availableCash += amount;
+      holdings.value = holdings.value.filter(h => h.code !== stockCode);
+
+      // 更新总资产和收益率
+      const totalHoldingsValue = holdings.value.reduce((sum, h) => sum + h.quantity * h.currentPrice, 0);
+      account.value.totalAssets = account.value.availableCash + totalHoldingsValue;
+      account.value.profitRate = ((account.value.totalAssets - 1000000) / 1000000 * 100).toFixed(2);
+
+      saveToStorage();
+      ElMessage.success('清仓成功');
+    };
+
+    return {
+      account,
+      holdings,
+      tradeForm,
+      handleTrade,
+      sellAll,
+      validateStock
+    };
+  }
 };
 </script>
 

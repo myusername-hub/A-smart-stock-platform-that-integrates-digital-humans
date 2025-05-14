@@ -1,3 +1,53 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const strategy = ref({
+  description: '',
+  parameters: [{ name: '', defaultValue: '', description: '' }],
+  code: ''
+})
+
+// 保存策略
+const saveStrategy = (isPublic = false) => {
+  const savedStrategy = {
+    ...strategy.value,
+    isPublic,
+    createTime: new Date().toISOString(),
+    lastModified: new Date().toISOString()
+  }
+  
+  // 获取已有策略列表
+  const savedStrategies = JSON.parse(localStorage.getItem('strategies') || '[]')
+  savedStrategies.push(savedStrategy)
+  localStorage.setItem('strategies', JSON.stringify(savedStrategies))
+  
+  alert('策略保存成功！')
+}
+
+// 添加参数
+const addParameter = () => {
+  strategy.value.parameters.push({ name: '', defaultValue: '', description: '' })
+}
+
+// 删除参数
+const removeParameter = (index) => {
+  strategy.value.parameters.splice(index, 1)
+}
+
+// 加载已保存的策略
+onMounted(() => {
+  const savedStrategies = JSON.parse(localStorage.getItem('strategies') || '[]')
+  if (savedStrategies.length > 0) {
+    const lastStrategy = savedStrategies[savedStrategies.length - 1]
+    strategy.value = {
+      description: lastStrategy.description || '',
+      parameters: lastStrategy.parameters || [],
+      code: lastStrategy.code || ''
+    }
+  }
+})
+</script>
+
 <template>
   <div class="policy-container">
     <div class="header">
@@ -11,6 +61,7 @@
       <div class="section">
         <h3>策略简介</h3>
         <textarea
+          v-model="strategy.description"
           placeholder="给策略起个名字并描述~"
           rows="3"
           class="textarea"
@@ -21,13 +72,15 @@
       <div class="section">
         <h3>参数列表</h3>
         <div class="parameter-list">
-          <div class="parameter-item">
-            <input type="text" placeholder="变量名" class="input" />
-            <input type="text" placeholder="默认值" class="input" />
-            <input type="text" placeholder="参数描述" class="input" />
-            <button class="btn-red">删除</button>
+          <div v-for="(param, index) in strategy.parameters" 
+               :key="index" 
+               class="parameter-item">
+            <input v-model="param.name" type="text" placeholder="变量名" class="input" />
+            <input v-model="param.defaultValue" type="text" placeholder="默认值" class="input" />
+            <input v-model="param.description" type="text" placeholder="参数描述" class="input" />
+            <button class="btn-red" @click="removeParameter(index)">删除</button>
           </div>
-          <button class="btn-blue">+ 添加参数</button>
+          <button class="btn-blue" @click="addParameter">+ 添加参数</button>
         </div>
       </div>
 
@@ -36,6 +89,7 @@
         <h3>策略代码</h3>
         <div class="code-editor">
           <textarea
+            v-model="strategy.code"
             rows="10"
             placeholder="在这里编写你的策略代码"
             class="textarea code-area"
@@ -51,8 +105,8 @@
 
     <!-- 操作按钮 -->
     <div class="footer">
-      <button class="btn-blue">保存并私有</button>
-      <button class="btn-blue">保存并公开</button>
+      <button class="btn-blue" @click="saveStrategy(false)">保存并私有</button>
+      <button class="btn-blue" @click="saveStrategy(true)">保存并公开</button>
     </div>
   </div>
 </template>

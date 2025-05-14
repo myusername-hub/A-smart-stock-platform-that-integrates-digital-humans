@@ -86,6 +86,9 @@ const submitComment = async () => {
 const handleLike = (comment) => {
   comment.isLiked = !comment.isLiked
   comment.likes += comment.isLiked ? 1 : -1
+  
+  // 保存更新后的评论数据到localStorage
+  localStorage.setItem(`comments_${stockCode}`, JSON.stringify(comments.value))
 }
 
 onMounted(() => {
