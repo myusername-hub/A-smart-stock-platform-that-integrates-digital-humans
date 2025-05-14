@@ -2,228 +2,370 @@
   <div class="forecast-container">
     <div class="search-bar">
       <div class="search-wrapper">
-        <el-button type="primary" size="large" @click="searchStock">查询</el-button>
+        <input
+          v-model="searchInput"
+          type="text"
+          class="basic-input"
+          placeholder="请输入股票代码或名称关键词"
+          @input="handleInputChange"
+          @focus="handleFocus"
+          @keyup.down="handleKeyDown"
+          @keyup.up="handleKeyUp"
+          @keyup.enter="handleEnter"
+        >
+        <el-button 
+          type="primary" 
+          :loading="loading" 
+          class="search-button"
+          @click="handleSearch"
+        >
+          <el-icon class="search-icon"><Search /></el-icon>
+          搜索
+        </el-button>
+      </div>
+      <div v-if="showDropdown && filteredStocks.length" class="search-dropdown">
+        <div
+          v-for="(stock, index) in filteredStocks"
+          :key="stock.value"
+          :class="['dropdown-item', { active: currentIndex === index }]"
+          @click="selectStock(stock)"
+          @mouseenter="currentIndex = index"
+        >
+          <span class="stock-name" v-html="highlightKeyword(stock.label.split('(')[0])"></span>
+          <span class="stock-code" v-html="highlightKeyword(stock.value)"></span>
+        </div>
       </div>
     </div>
     <div ref="chartRef" class="chart-container"></div>
+    
+    <!-- 添加底部按钮组 -->
+    <div class="trade-buttons">
+      <button class="talk-btn" @click="goToTalk">
+        <i class="iconfont icon-comment"></i>
+        讨论区
+      </button>
+      <div class="operation-btns">
+        <button class="buy-btn" @click="handleBuy">买入</button>
+        <button class="sell-btn" @click="handleSell">卖出</button>
+      </div>
+    </div>
   </div>
 </template>
 
-<script>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+<script setup>
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { Search } from '@element-plus/icons-vue'
+import { stockNameMap } from '@/utils/stockMap'
+import { useRouter } from 'vue-router'
 
-const stockData = [
-  { label: '中国银行(601988)', value: '601988' },
-  { label: '工商银行(601398)', value: '601398' },
-  { label: '建设银行(601939)', value: '601939' },
-  { label: '农业银行(601288)', value: '601288' },
-  { label: '中国平安(601318)', value: '601318' },
-  { label: '招商银行(600036)', value: '600036' }
-]
+const router = useRouter()
+const chartRef = ref(null)
+const searchInput = ref('')
+const showDropdown = ref(false)
+const filteredStocks = ref([])
+const loading = ref(false)
+const currentIndex = ref(-1) // 当前选中的建议项索引
+const currentStockCode = ref('') // 存储当前选中的股票代码
+let chart = null
 
-const historicalData = [
-  { value: 3.59, date: '2023-01' },
-  { value: 3.61, date: '2023-02' },
-  { value: 3.65, date: '2023-03' },
-  { value: 3.66, date: '2023-04' },
-  { value: 3.64, date: '2023-05' },
-  { value: 3.61, date: '2023-06' },
-  { value: 3.60, date: '2023-07' },
-  { value: 3.57, date: '2023-08' },
-  { value: 3.57, date: '2023-09' },
-  { value: 3.59, date: '2023-10' },
-  { value: 3.60, date: '2023-11' },
-  { value: 3.58, date: '2023-12' }
-]
+const stockList = Object.entries(stockNameMap).map(([code, name]) => ({
+  value: code,
+  label: `${name} (${code})`
+}))
 
-const forecastData = [
-  { value: 3.61, date: '2024-01' },
-  { value: 3.63, date: '2024-02' },
-  { value: 3.64, date: '2024-03' },
-  { value: 3.64, date: '2024-04' },
-  { value: 3.65, date: '2024-05' },
-  { value: 3.65, date: '2024-06' },
-  { value: 3.66, date: '2024-07' },
-  { value: 3.66, date: '2024-08' },
-  { value: 3.67, date: '2024-09' },
-  { value: 3.68, date: '2024-10' }
-]
+// 生成模拟数据
+const mockHistoricalData = {
+  '688111': generateMockData(30, 110, 130),  // 调整价格范围
+  '002230': generateMockData(30, 95, 120),
+  '688777': generateMockData(30, 100, 140),
+  '688375': generateMockData(30, 90, 125),
+  '688169': generateMockData(30, 105, 150),
+  '688120': generateMockData(30, 92, 135)
+}
 
-export default {
-  name: 'Forecast',
-  components: { Search },
-  setup() {
-    const chartRef = ref(null)
-    const keyword = ref('')
-    let chart = null
-
-    const initChart = () => {
-      if (chartRef.value) {
-        chart = echarts.init(chartRef.value)
-        const option = {
-          title: {
-            text: '中国银行(601988)过去20天历史数据以及未来10天预测数据',
-            left: 'center',
-            top: '20px'
-          },
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-              type: 'line',
-              lineStyle: {
-                color: '#7F7F7F',
-                width: 2,
-                type: 'dashed'
-              }
-            }
-          },
-          legend: {
-            data: ['过去20天', '未来10天'],
-            top: '50px'
-          },
-          grid: {
-            top: '100px',
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            containLabel: true
-          },
-          xAxis: {
-            type: 'category',
-            boundaryGap: false,
-            data: [...historicalData.map(item => item.date), ...forecastData.map(item => item.date)]
-          },
-          yAxis: {
-            type: 'value',
-            min: 3,
-            max: 4,
-            interval: 0.2,
-            axisLabel: {
-              formatter: '{value}'
-            }
-          },
-          series: [
-            {
-              name: '过去20天',
-              type: 'line',
-              data: historicalData.map(item => item.value),
-              itemStyle: {
-                color: '#FF6B6B'
-              },
-              animationDuration: 2000,
-              animationEasing: 'quadraticOut',
-              smooth: true,
-              effect: {
-                show: true,
-                period: 3,
-                trailLength: 0.7
-              },
-              symbol: 'circle',
-              symbolSize: 8,
-              lineStyle: {
-                width: 3,
-                shadowColor: 'rgba(255,107,107,0.5)',
-                shadowBlur: 10
-              },
-              emphasis: {
-                scale: true,
-                focus: 'series'
-              }
-            },
-            {
-              name: '未来10天',
-              type: 'line',
-              data: Array(historicalData.length).fill('-').concat(forecastData.map(item => item.value)),
-              itemStyle: {
-                color: '#4D96FF'
-              },
-              animationDuration: 2000,
-              animationDelay: 1000,
-              animationEasing: 'quadraticOut',
-              smooth: true,
-              effect: {
-                show: true,
-                period: 3,
-                trailLength: 0.7
-              },
-              symbol: 'circle',
-              symbolSize: 8,
-              lineStyle: {
-                width: 3,
-                shadowColor: 'rgba(77,150,255,0.5)',
-                shadowBlur: 10
-              },
-              emphasis: {
-                scale: true,
-                focus: 'series'
-              }
-            }
-          ],
-          animation: true,
-          animationThreshold: 2000,
-          animationDuration: 2000,
-          animationEasing: 'cubicInOut',
-          animationDelay: function (idx) {
-            return idx * 100;
-          },
-          animationDurationUpdate: 1000,
-          animationEasingUpdate: 'cubicInOut',
-          animationDelayUpdate: function (idx) {
-            return idx * 100;
-          }
-        }
-        chart.setOption(option)
-      }
-    }
-
-    const handleResize = () => {
-      chart && chart.resize()
-    }
-
-    onMounted(() => {
-      initChart()
-      window.addEventListener('resize', handleResize)
+// 生成模拟数据的函数
+function generateMockData(days, minPrice, maxPrice) {
+  const data = []
+  const today = new Date()
+  
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    data.push({
+      trade_date: date.toISOString().split('T')[0],
+      close: (Math.random() * (maxPrice - minPrice) + minPrice).toFixed(2)
     })
+  }
+  return data
+}
 
-    onUnmounted(() => {
-      if (chart) {
-        chart.dispose()
-        chart = null
-      }
-      window.removeEventListener('resize', handleResize)
+// 生成预测数据的函数
+function generateForecastData(historicalData, days = 10) {
+  const lastValue = parseFloat(historicalData[historicalData.length - 1].close)
+  const lastDate = new Date(historicalData[historicalData.length - 1].trade_date)
+  const data = []
+  
+  for (let i = 1; i <= days; i++) {
+    const date = new Date(lastDate)
+    date.setDate(date.getDate() + i)
+    // 在最后一个历史价格的基础上随机波动
+    const predictedValue = lastValue * (1 + (Math.random() - 0.4) * 0.1)
+    data.push({
+      trade_date: date.toISOString().split('T')[0],
+      close: predictedValue.toFixed(2)
     })
+  }
+  return data
+}
 
-    const searchStock = () => {
-      const newHistoricalData = historicalData.map(item => ({
-        ...item,
-        value: +(item.value + (Math.random() - 0.5) * 0.1).toFixed(2)
-      }));
-      
-      const newForecastData = forecastData.map(item => ({
-        ...item,
-        value: +(item.value + (Math.random() - 0.5) * 0.1).toFixed(2)
-      }));
-
-      chart.setOption({
-        series: [
-          {
-            data: newHistoricalData.map(item => item.value)
-          },
-          {
-            data: Array(historicalData.length).fill('-').concat(newForecastData.map(item => item.value))
-          }
-        ]
-      });
-    }
-
-    return {
-      chartRef,
-      searchStock
-    }
+// 计算Y轴范围
+const calculateYAxisRange = (values) => {
+  const minValue = Math.min(...values)
+  const maxValue = Math.max(...values)
+  return {
+    min: Math.floor(minValue) - 20,  // 最低价向下取整后减20
+    max: Math.ceil(maxValue) + 10    // 最高价向上取整后加10
   }
 }
+
+// 初始化图表
+const initChart = () => {
+  if (chartRef.value) {
+    chart = echarts.init(chartRef.value)
+    const defaultStockCode = '688111'
+    currentStockCode.value = defaultStockCode // 设置默认股票代码
+    updateChartData(defaultStockCode)
+  }
+}
+
+// 更新图表数据
+const updateChartData = (stockCode) => {
+  try {
+    loading.value = true
+    const mockData = mockHistoricalData[stockCode]
+    const stockName = stockNameMap[stockCode]
+    
+    if (mockData && chart) {
+      // 生成预测数据
+      const forecastData = generateForecastData(mockData)
+      
+      // 合并历史数据和预测数据的日期和值
+      const dates = [...mockData.map(item => item.trade_date), ...forecastData.map(item => item.trade_date)]
+      const historicalValues = mockData.map(item => parseFloat(item.close))
+      const forecastValues = forecastData.map(item => parseFloat(item.close))
+
+      // 计算Y轴范围
+      const allValues = [...historicalValues, ...forecastValues]
+      const yAxisRange = calculateYAxisRange(allValues)
+      
+      const option = {
+        title: {
+          text: `${stockName} (${stockCode}) - 历史数据与预测趋势`,
+          left: 'center',
+          top: '20px'
+        },
+        tooltip: {
+          trigger: 'axis',
+          formatter: function(params) {
+            const date = params[0].axisValue
+            return `日期：${date}<br/>` + params
+              .filter(param => param.value !== null)
+              .map(param => `${param.seriesName}：${param.value}`)
+              .join('<br/>')
+          }
+        },
+        legend: {
+          data: ['历史数据', '预测数据'],
+          top: '50px'
+        },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          axisLabel: {
+            formatter: (value) => value.substring(5) // 只显示月-日
+          }
+        },
+        yAxis: {
+          type: 'value',
+          scale: true,
+          min: yAxisRange.min,
+          max: yAxisRange.max,
+          splitLine: {
+            show: true,
+            lineStyle: {
+              type: 'dashed'
+            }
+          },
+          axisLabel: {
+            formatter: '{value}'
+          }
+        },
+        series: [
+          {
+            name: '历史数据',
+            type: 'line',
+            data: [...historicalValues, ...new Array(forecastValues.length).fill(null)],
+            smooth: true,
+            itemStyle: { color: '#FF6B6B' },
+            lineStyle: { width: 3 }
+          },
+          {
+            name: '预测数据',
+            type: 'line',
+            data: [...new Array(historicalValues.length).fill(null), ...forecastValues],
+            smooth: true,
+            itemStyle: { color: '#4D96FF' },
+            lineStyle: { 
+              width: 3,
+              type: 'dashed'
+            }
+          }
+        ]
+      }
+      chart.setOption(option, true)
+    }
+  } catch (error) {
+    console.error('更新图表失败:', error)
+    ElMessage.error('更新图表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 处理输入框获得焦点
+const handleFocus = () => {
+  filteredStocks.value = stockList.slice(0, 10) // 显示前10个股票作为默认建议
+  showDropdown.value = true
+}
+
+// 处理键盘上下键
+const handleKeyDown = () => {
+  if (!showDropdown.value || !filteredStocks.value.length) return
+  currentIndex.value = (currentIndex.value + 1) % filteredStocks.value.length
+}
+
+const handleKeyUp = () => {
+  if (!showDropdown.value || !filteredStocks.value.length) return
+  currentIndex.value = currentIndex.value <= 0 ? filteredStocks.value.length - 1 : currentIndex.value - 1
+}
+
+// 处理回车键
+const handleEnter = () => {
+  if (currentIndex.value > -1) {
+    selectStock(filteredStocks.value[currentIndex.value])
+  } else {
+    handleSearch()
+  }
+}
+
+// 高亮关键词
+const highlightKeyword = (text) => {
+  if (!searchInput.value.trim()) return text
+  const keyword = searchInput.value.toLowerCase()
+  const index = text.toLowerCase().indexOf(keyword)
+  if (index === -1) return text
+  
+  const before = text.substring(0, index)
+  const match = text.substring(index, index + keyword.length)
+  const after = text.substring(index + keyword.length)
+  
+  return `${before}<span class="highlight">${match}</span>${after}`
+}
+
+// 处理输入变化
+const handleInputChange = () => {
+  const query = searchInput.value.trim().toLowerCase()
+  currentIndex.value = -1
+  
+  if (!query) {
+    filteredStocks.value = stockList.slice(0, 10) // 显示前10个股票作为默认建议
+    showDropdown.value = true
+    return
+  }
+
+  filteredStocks.value = stockList
+    .filter(item => {
+      const stockName = item.label.toLowerCase()
+      const stockCode = item.value
+      return stockName.includes(query) || stockCode.includes(query)
+    })
+    .slice(0, 10)
+  
+  showDropdown.value = true
+}
+
+// 点击选择股票
+const selectStock = (stock) => {
+  searchInput.value = stock.label
+  showDropdown.value = false
+  currentStockCode.value = stock.value
+  updateChartData(stock.value)
+}
+
+// 处理搜索按钮点击
+const handleSearch = () => {
+  const query = searchInput.value.trim()
+  if (!query) {
+    ElMessage.warning('请输入搜索关键词')
+    return
+  }
+
+  if (filteredStocks.value.length > 0) {
+    // 默认选择第一个匹配的股票
+    selectStock(filteredStocks.value[0])
+  } else {
+    ElMessage.warning('未找到匹配的股票')
+  }
+}
+
+// 添加点击外部关闭下拉框
+const handleClickOutside = (event) => {
+  const wrapper = document.querySelector('.search-wrapper')
+  if (wrapper && !wrapper.contains(event.target)) {
+    showDropdown.value = false
+  }
+}
+
+const handleResize = () => {
+  chart && chart.resize()
+}
+
+// 添加按钮处理函数
+const goToTalk = () => {
+  if (!currentStockCode.value) {
+    ElMessage.warning('请先选择股票')
+    return
+  }
+  
+  router.push({
+    name: 'talk',
+    params: { code: currentStockCode.value }
+  })
+}
+
+const handleBuy = () => {
+  ElMessage.success('买入功能待实现')
+}
+
+const handleSell = () => {
+  ElMessage.warning('卖出功能待实现')
+}
+
+onMounted(() => {
+  initChart()
+  window.addEventListener('resize', handleResize)
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  if (chart) {
+    chart.dispose()
+    chart = null
+  }
+  window.removeEventListener('resize', handleResize)
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped lang="scss">
@@ -241,9 +383,108 @@ export default {
     margin-bottom: 20px;
 
     .search-wrapper {
+      position: relative;
       display: flex;
-      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 600px;
+
+      .basic-input {
+        flex: 1;
+        min-width: 300px;
+        padding: 8px 12px;
+        border: 1px solid #dcdfe6;
+        border-radius: 4px;
+        font-size: 14px;
+        transition: all 0.3s;
+
+        &:focus {
+          outline: none;
+          border-color: #409eff;
+        }
+      }
+
+      .search-button {
+        min-width: 80px;
+        height: 40px;
+        padding: 0 20px;
+        border-radius: 5px;
+        font-size: 15px;
+        font-weight: 500;
+        background: linear-gradient(45deg, #409eff, #36cf9f);
+        border: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        line-height: 1;
+
+        .search-icon {
+          margin-right: 2px;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+        }
+
+        span {
+          display: inline-block;
+          vertical-align: middle;
+        }
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+    }
+  }
+
+  .search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+    z-index: 1000;
+
+    .dropdown-item {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
+      padding: 10px 15px;
+      cursor: pointer;
+
+      .stock-name {
+        font-weight: 500;
+      }
+
+      .stock-code {
+        color: #909399;
+        font-size: 13px;
+      }
+
+      &:hover {
+        background-color: #f5f7fa;
+      }
+
+      &.active {
+        background-color: #f5f7fa;
+      }
+
+      .highlight {
+        color: #409eff;
+        font-weight: bold;
+      }
     }
   }
 
@@ -256,14 +497,81 @@ export default {
   }
 }
 
-:deep(.suggestion-item) {
+.trade-buttons {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  
+  padding: 15px 20px;
+  background-color: #fff;
+  box-shadow: 0 -2px 12px 0 rgba(0,0,0,0.1);
+  z-index: 100;
+
+  .talk-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: #409eff;
+    color: white;
+    cursor: pointer;
+    transition: opacity 0.3s;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+
+  .operation-btns {
+    display: flex;
+    gap: 10px;
+
+    .buy-btn,
+    .sell-btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.3s;
+
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+
+    .buy-btn {
+      background-color: #f56c6c;
+      color: white;
+    }
+
+    .sell-btn {
+      background-color: #67c23a;
+      color: white;
+    }
+  }
+}
+
+.suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+
   .stock-code {
     color: #909399;
     font-size: 13px;
   }
+}
+
+:deep(.el-select-dropdown__item) {
+  padding: 0 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

@@ -49,7 +49,7 @@ export default {
       try {
         loading.value = true
         error.value = null
-        const response = await axios.get('http://localhost:5000/stock_data')
+        const response = await axios.get('http://localhost:5000/api/stock_daily_data')  // 修改API路径
         stockData.value = response.data
       } catch (err) {
         console.error('获取数据失败:', err)

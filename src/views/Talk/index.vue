@@ -1,23 +1,67 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { stockNameMap } from '@/utils/stockMap'
 
 const route = useRoute()
 const stockCode = route.params.code
+const stockName = stockNameMap[stockCode] || '未知股票'
 const comments = ref([])
 const newComment = ref('')
 
+// 模拟评论数据
+const mockComments = [
+  {
+    id: 1,
+    username: '投资达人',
+    avatar: 'https://picsum.photos/40',
+    content: '这支股票近期表现不错',
+    time: '2024-01-20 14:30',
+    likes: 12,
+    replies: 3,
+    isLiked: false
+  },
+  {
+    id: 2,
+    username: '股市分析师',
+    avatar: 'https://picsum.photos/41',
+    content: '建议关注主力资金动向',
+    time: '2024-01-20 15:20',
+    likes: 8,
+    replies: 2,
+    isLiked: false
+  }
+]
+
 // 获取评论数据
 const fetchComments = async () => {
-  // TODO: 从后端获取评论数据
-  comments.value = []
+  // 模拟API调用
+  comments.value = mockComments
 }
 
 // 发布评论
 const submitComment = async () => {
   if (!newComment.value.trim()) return
-  // TODO: 提交评论到后端
+  
+  const newCommentData = {
+    id: Date.now(),
+    username: '当前用户',
+    avatar: 'https://picsum.photos/42',
+    content: newComment.value,
+    time: new Date().toLocaleString(),
+    likes: 0,
+    replies: 0,
+    isLiked: false
+  }
+  
+  comments.value.unshift(newCommentData)
   newComment.value = ''
+}
+
+// 点赞功能
+const handleLike = (comment) => {
+  comment.isLiked = !comment.isLiked
+  comment.likes += comment.isLiked ? 1 : -1
 }
 
 onMounted(() => {
@@ -28,17 +72,32 @@ onMounted(() => {
 <template>
   <div class="talk-container">
     <div class="header">
-      <h2>{{ stockCode }} 讨论区</h2>
+      <h2>{{ stockName }} ({{ stockCode }}) 讨论区</h2>
     </div>
 
     <div class="comment-list">
       <div v-if="comments.length" class="comments">
         <div v-for="comment in comments" :key="comment.id" class="comment-item">
-          <div class="comment-header">
-            <span class="username">{{ comment.username }}</span>
-            <span class="time">{{ comment.time }}</span>
+          <div class="user-info">
+            <img :src="comment.avatar" class="avatar" alt="用户头像">
+            <div class="comment-content">
+              <div class="comment-header">
+                <span class="username">{{ comment.username }}</span>
+                <span class="time">{{ comment.time }}</span>
+              </div>
+              <div class="comment-text">{{ comment.content }}</div>
+              <div class="comment-actions">
+                <span class="action" @click="handleLike(comment)">
+                  <i class="iconfont icon-dianzan" :class="{ 'is-liked': comment.isLiked }"></i>
+                  {{ comment.likes }}
+                </span>
+                <span class="action">
+                  <i class="iconfont icon-pinglun"></i>
+                  {{ comment.replies }}
+                </span>
+              </div>
+            </div>
           </div>
-          <div class="comment-content">{{ comment.content }}</div>
         </div>
       </div>
       <div v-else class="empty-message">暂无评论</div>
@@ -55,7 +114,7 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .talk-container {
   padding: 20px;
   max-width: 800px;
@@ -77,6 +136,21 @@ onMounted(() => {
   border-bottom: 1px solid #ebeef5;
 }
 
+.user-info {
+  display: flex;
+  gap: 12px;
+  
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+  }
+}
+
+.comment-content {
+  flex: 1;
+}
+
 .comment-header {
   display: flex;
   justify-content: space-between;
@@ -92,8 +166,36 @@ onMounted(() => {
   color: #909399;
 }
 
-.comment-content {
-  line-height: 1.5;
+.comment-text {
+  margin: 8px 0;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 16px;
+  color: #909399;
+  font-size: 14px;
+
+  .action {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    &:hover {
+      color: #409eff;
+    }
+
+    .iconfont {
+      font-size: 16px;
+      line-height: 1;
+
+      &.is-liked {
+        color: #409eff;
+        font-weight: bold;
+      }
+    }
+  }
 }
 
 .empty-message {
@@ -112,26 +214,26 @@ onMounted(() => {
   box-shadow: 0 -2px 12px 0 rgba(0,0,0,0.1);
   display: flex;
   gap: 10px;
-}
 
-.comment-input textarea {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  resize: none;
-}
+  textarea {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    resize: none;
+  }
 
-.comment-input button {
-  padding: 0 20px;
-  background-color: #409eff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+  button {
+    padding: 0 20px;
+    background-color: #409eff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 
-.comment-input button:hover {
-  opacity: 0.8;
+    &:hover {
+      opacity: 0.8;
+    }
+  }
 }
 </style>
