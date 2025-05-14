@@ -9,6 +9,7 @@ const stockList = ref([])
 const loading = ref(false)
 const error = ref(null)
 const searchQuery = ref('')
+const collectedStocks = ref([]) // 改用数组存储已收藏的股票代码
 
 // 数据处理函数
 const processStockData = (data) => {
@@ -28,8 +29,8 @@ const processStockData = (data) => {
       open: parseFloat(stock.open).toFixed(2),
       high: parseFloat(stock.high).toFixed(2),
       low: parseFloat(stock.low).toFixed(2),
-      volume: `${(parseFloat(stock.vol) / 10000).toFixed(2)}万手`,
-      amount: `${(parseFloat(stock.amount) / 100000000).toFixed(2)}亿元`,
+      volume: `${(parseFloat(stock.vol) / 10000).toFixed(2)}`,
+      amount: `${(parseFloat(stock.amount) / 100000000).toFixed(2)}`,
       amplitude: parseFloat(stock.amplitude).toFixed(2)
     }
   })
@@ -73,7 +74,30 @@ const goToDetail = (code) => {
   })
 }
 
+// 处理收藏
+const handleCollect = (event, code) => {
+  event.stopPropagation()
+  const index = collectedStocks.value.indexOf(code)
+  if (index > -1) {
+    collectedStocks.value.splice(index, 1)
+  } else {
+    collectedStocks.value.push(code)
+  }
+  // 保存到本地存储
+  localStorage.setItem('collectedStocks', JSON.stringify(collectedStocks.value))
+}
+
+// 检查是否收藏
+const isCollected = (code) => {
+  return collectedStocks.value.includes(code)
+}
+
+// 初始化时加载本地存储的收藏数据
 onMounted(() => {
+  const savedCollections = localStorage.getItem('collectedStocks')
+  if (savedCollections) {
+    collectedStocks.value = JSON.parse(savedCollections)
+  }
   fetchStockData()
   // 每分钟更新一次数据
   const timer = setInterval(fetchStockData, 60000)
@@ -120,8 +144,8 @@ onMounted(() => {
           <th>开盘价</th>
           <th>最高价</th>
           <th>最低价</th>
-          <th>成交量</th>
-          <th>成交额</th>
+          <th>成交量（万手）</th>
+          <th>成交额（亿元）</th>
           <th>振幅</th>
           <th>操作</th>
         </tr>
@@ -153,7 +177,13 @@ onMounted(() => {
           <td>{{ stock.amplitude }}%</td>
           <td>
             <button class="detail-btn">查看详情</button>
-            <button class="collect-btn">收藏</button>
+            <button 
+              class="collect-btn"
+              @click="handleCollect($event, stock.code)"
+              :class="{ 'collected': isCollected(stock.code) }"
+            >
+              {{ isCollected(stock.code) ? '取消收藏' : '收藏' }}
+            </button>
           </td>
         </tr>
       </tbody>
@@ -212,6 +242,7 @@ onMounted(() => {
 
 .stock-table {
   width: 100%;
+  table-layout: fixed; /* 添加固定布局 */
   border-collapse: collapse;
   text-align: center;
 }
@@ -220,12 +251,50 @@ onMounted(() => {
 .stock-table td {
   padding: 12px 8px;
   border: 1px solid #ebeef5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.stock-table th {
-  background-color: #f5f7fa;
-  color: #606266;
-  font-weight: 500;
+/* 设置各列宽度 */
+.stock-table th:nth-child(1),
+.stock-table td:nth-child(1) { width: 8%; }  /* 股票代码 */
+
+.stock-table th:nth-child(2),
+.stock-table td:nth-child(2) { width: 8%; }  /* 股票名称 */
+
+.stock-table th:nth-child(3),
+.stock-table td:nth-child(3) { width: 7%; }  /* 最新价 */
+
+.stock-table th:nth-child(4),
+.stock-table td:nth-child(4) { width: 7%; }  /* 涨跌额 */
+
+.stock-table th:nth-child(5),
+.stock-table td:nth-child(5) { width: 7%; }  /* 涨跌幅 */
+
+.stock-table th:nth-child(6),
+.stock-table td:nth-child(6) { width: 7%; }  /* 开盘价 */
+
+.stock-table th:nth-child(7),
+.stock-table td:nth-child(7) { width: 7%; }  /* 最高价 */
+
+.stock-table th:nth-child(8),
+.stock-table td:nth-child(8) { width: 7%; }  /* 最低价 */
+
+.stock-table th:nth-child(9),
+.stock-table td:nth-child(9) { width: 10%; } /* 成交量 */
+
+.stock-table th:nth-child(10),
+.stock-table td:nth-child(10) { width: 10%; } /* 成交额 */
+
+.stock-table th:nth-child(11),
+.stock-table td:nth-child(11) { width: 7%; } /* 振幅 */
+
+.stock-table th:nth-child(12),
+.stock-table td:nth-child(12) { 
+  width: 15%;
+  white-space: nowrap;  /* 添加这行确保按钮不会换行 */
+  padding: 4px;  /* 调整padding让按钮有足够空间 */
 }
 
 .red {
@@ -238,11 +307,17 @@ onMounted(() => {
 
 .detail-btn,
 .collect-btn {
-  padding: 6px 12px;
+  display: inline-block;
+  padding: 4px 8px;  /* 减小padding */
+  min-width: 60px;   /* 减小最小宽度 */
+  font-size: 13px;   /* 稍微减小字体 */
+  margin: 0 2px;     /* 减小间距 */
   border-radius: 4px;
   border: none;
   cursor: pointer;
-  margin: 0 4px;
+  line-height: 1.5;
+  text-align: center;
+  transition: all 0.3s;
 }
 
 .detail-btn {
@@ -253,6 +328,16 @@ onMounted(() => {
 .collect-btn {
   background-color: #f56c6c;
   color: white;
+  transition: all 0.3s;
+}
+
+.collect-btn:hover {
+  background-color: #ff7875;
+}
+
+.collect-btn.collected {
+  background-color: #909399;
+  opacity: 0.8;
 }
 
 .stock-row {

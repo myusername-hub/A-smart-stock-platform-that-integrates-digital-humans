@@ -170,7 +170,7 @@ export default {
 <style scoped lang="scss">
 @use '@/assets/theme' as theme;
 .all {
-  background: linear-gradient(135deg, #1a1f35 0%, #2a3a5c 100%);
+  background: #2a3a5c;
   min-height: 100vh;
 
   .header {
