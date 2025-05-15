@@ -1,10 +1,12 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 
 export default {
   setup() {
     const router = useRouter()
+    const authStore = useAuthStore()
     const formData = ref({
       username: '',
       password: '',
@@ -12,12 +14,6 @@ export default {
     })
     const loading = ref(false)
     const showIntro = ref(true)
-
-    onMounted(() => {
-      setTimeout(() => {
-        showIntro.value = false
-      }, 2000)
-    })
 
     const handleSubmit = async () => {
       if (!formData.value.username || !formData.value.password) {
@@ -27,21 +23,49 @@ export default {
 
       loading.value = true
       try {
-        // TODO: 实现登录逻辑
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await authStore.login(formData.value.username, formData.value.password)
         router.push('/')
       } catch (error) {
         console.error('登录失败:', error)
+        alert(error.message || '登录失败，请稍后重试')
       } finally {
         loading.value = false
       }
     }
 
+    const handleSkipIntro = () => {
+      showIntro.value = false
+      localStorage.setItem('hasSeenIntro', 'true')
+    }
+
+    onMounted(() => {
+      const fromRegister = localStorage.getItem('fromRegister')
+      if (fromRegister) {
+        showIntro.value = true
+        localStorage.removeItem('fromRegister')
+        // 允许动画自动关闭，但时间缩短
+        setTimeout(() => {
+          showIntro.value = false
+        }, 6000)
+      } else {
+        const hasSeenIntro = localStorage.getItem('hasSeenIntro')
+        if (hasSeenIntro) {
+          showIntro.value = false
+        } else {
+          setTimeout(() => {
+            showIntro.value = false
+            localStorage.setItem('hasSeenIntro', 'true')
+          }, 2000)
+        }
+      }
+    })
+
     return {
       formData,
       loading,
       handleSubmit,
-      showIntro
+      showIntro,
+      handleSkipIntro
     }
   }
 }
@@ -49,8 +73,11 @@ export default {
 
 <template>
   <div class="signin-container">
-    <div class="intro" :class="{ 'intro-exit': !showIntro }">
+    <div class="intro" 
+         :class="{ 'intro-exit': !showIntro }"
+         @click="handleSkipIntro">
       <h1>广财股票量化交易平台</h1>
+      <div class="skip-hint">点击任意处跳过</div>
     </div>
     <div class="signin-box" :class="{ 'signin-enter': !showIntro }">
       <div class="signin-content">
@@ -112,7 +139,7 @@ export default {
 <style scoped lang="scss">
 @use '@/assets/theme' as theme;
 .signin-container {
-  min-height: 100vh;
+  min-height: calc(100vh - 60px); /* 减去导航栏高度 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -157,6 +184,14 @@ export default {
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       animation: shine 4s linear infinite, titleGlow 2s ease-in-out infinite alternate;
+    }
+
+    .skip-hint {
+      position: absolute;
+      bottom: 40px;
+      color: rgba(230, 241, 255, 0.6);
+      font-size: 0.9rem;
+      animation: fadeInOut 2s ease-in-out infinite;
     }
 
     &.intro-exit {
@@ -345,5 +380,10 @@ export default {
   to {
     background-position: -300% center;
   }
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 </style>

@@ -8,7 +8,7 @@ import Talk from '../views/Talk/index.vue'
 import AI from '../views/AI/index.vue'
 import StockDetail from '../views/StockDetail/index.vue'
 import Login from '../views/Login/index.vue'
-import Register from '../views/Register/index.vue'
+import Register from '@/views/Register/index.vue'
 import Intalk from '../views/Talk/Intalk.vue'
 
 const routes = [
@@ -66,7 +66,10 @@ const routes = [
   {
     path: '/register',
     name: 'Register',
-    component: Register
+    component: Register,
+    meta: {
+      title: '用户注册'
+    }
   },
   {
     path: '/intalk',

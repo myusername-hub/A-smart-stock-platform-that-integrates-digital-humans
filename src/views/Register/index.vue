@@ -1,10 +1,13 @@
 <script>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 
 export default {
+  name: 'Register',
   setup() {
     const router = useRouter()
+    const authStore = useAuthStore()
     const formData = ref({
       username: '',
       password: '',
@@ -20,18 +23,18 @@ export default {
 
       loading.value = true
       try {
-        // 模拟登录逻辑
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        // 将用户名存储到 localStorage
-        localStorage.setItem('loggedInUser', formData.value.username)
-        router.push('/login') // 修改为跳转到登录界面
+        await authStore.register(formData.value.username, formData.value.password)
+        localStorage.setItem('fromRegister', 'true') // 添加这行
+        router.push('/login')
       } catch (error) {
         console.error('注册失败:', error)
+        alert('注册失败：' + (error.response?.data?.message || '请稍后重试'))
       } finally {
         loading.value = false
       }
     }
 
+    // 确保返回模板中使用的所有数据和方法
     return {
       formData,
       loading,
@@ -42,63 +45,60 @@ export default {
 </script>
 
 <template>
-  <div class="signin-container">
-    <div class="signin-box">
-      <div class="signin-content">
-        <h2>注册</h2>
-        <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>
-              <span class="label-text">用户名</span>
-              <input 
-                type="text" 
-                v-model="formData.username"
-                placeholder="请输入用户名"
-                :disabled="loading"
-              />
-            </label>
-          </div>
-          
-          <div class="form-group">
-            <label>
-              <span class="label-text">密码</span>
-              <input 
-                type="password" 
-                v-model="formData.password"
-                placeholder="请输入密码"
-                :disabled="loading"
-              />
-            </label>
-          </div>
+  <div class="register-container">
+    <div class="register-box">
+      <h2>用户注册</h2>
+      <form @submit.prevent="handleSubmit">
+        <div class="form-group">
+          <label>
+            <span class="label-text">用户名</span>
+            <input 
+              type="text" 
+              v-model="formData.username"
+              placeholder="请输入用户名"
+              :disabled="loading"
+            />
+          </label>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <span class="label-text">密码</span>
+            <input 
+              type="password" 
+              v-model="formData.password"
+              placeholder="请输入密码"
+              :disabled="loading"
+            />
+          </label>
+        </div>
 
-          <div class="form-group remember-forgot">
-            <label class="remember-me">
-              <input 
-                type="checkbox" 
-                v-model="formData.remember"
-                :disabled="loading"
-              />
-              <span>记住我</span>
-            </label>
-            <a href="#" class="forgot-password">忘记密码？</a>
-          </div>
+        <div class="form-group remember-forgot">
+          <label class="remember-me">
+            <input 
+              type="checkbox" 
+              v-model="formData.remember"
+              :disabled="loading"
+            />
+            <span>记住我</span>
+          </label>
+          <a href="#" class="forgot-password">忘记密码？</a>
+        </div>
 
-          <button 
-            type="submit" 
-            :disabled="loading"
-            :class="{ 'loading': loading }"
-          >
-            {{ loading ? '注册中...' : '注册' }}
-          </button>
-        </form>
-      </div>
+        <button 
+          type="submit" 
+          :disabled="loading"
+          :class="{ 'loading': loading }"
+        >
+          {{ loading ? '注册中...' : '注册' }}
+        </button>
+      </form>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/theme' as theme;
-.signin-container {
+.register-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -106,7 +106,7 @@ export default {
   background: linear-gradient(135deg, #1a1f35 0%, #2a3a5c 100%);
   padding: 20px;
 
-  .signin-box {
+  .register-box {
     width: 100%;
     max-width: 420px;
     background: rgba(255, 255, 255, 0.1);
@@ -205,8 +205,6 @@ export default {
       font-size: 1rem;
       cursor: pointer;
       transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
 
       &:hover {
         background: linear-gradient(135deg, #1b6fa8 0%, #0a4d8c 100%);
@@ -218,6 +216,8 @@ export default {
       }
 
       &.loading {
+        position: relative;
+        
         &::after {
           content: '';
           position: absolute;

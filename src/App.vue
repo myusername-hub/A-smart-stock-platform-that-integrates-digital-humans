@@ -1,23 +1,19 @@
 <template>
-  <div>
-    <header>
-      <!-- <h1>股票量化交易系统</h1>
-      <nav>
-        <router-link to="/">首页</router-link>
-        <router-link to="/market-info">实时行情</router-link>
-        <router-link to="/stock-recommend">股票推荐</router-link>
-      </nav> -->
-    </header>
-    <main>
-      <router-view />
+  <div class="app">
+    <TheHeader />
+    <main class="main-content">
+      <router-view></router-view>
     </main>
   </div>
 </template>
 
-<style scoped lang="scss">
-@use '@/assets/theme' as theme;
-nav {
-  display: flex;
-  gap: 1rem;
+<script setup>
+import TheHeader from '@/views/Home/TheHeader.vue'
+</script>
+
+<style>
+body {
+  margin: 0;
+  padding: 0;
 }
 </style>

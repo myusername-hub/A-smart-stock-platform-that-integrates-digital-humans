@@ -1,71 +1,22 @@
 <script>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import "../../assets/iconfont.css"
+import TheHeader from './TheHeader.vue'
 
 export default {
+  components: {
+    TheHeader
+  },
   setup() {
     const router = useRouter()
-    const searchQuery = ref('')
-    const isLoggedIn = ref(false) // 是否已登录
-    const username = ref('') // 用户名
 
-    // 页面跳转
     const goToPage = (path) => {
       router.push(path)
     }
 
-    // 检查登录状态
-    const checkLoginStatus = () => {
-      const user = JSON.parse(localStorage.getItem('user'))
-      if (user && user.username) {
-        isLoggedIn.value = true
-        username.value = user.username
-      } else {
-        isLoggedIn.value = false
-        username.value = ''
-      }
-    }
-
-    // 模拟用户注销
-    const logout = () => {
-      localStorage.removeItem('user') // 清除本地存储
-      checkLoginStatus() // 更新状态
-    }
-
-    // 页面加载时检查登录状态
-    onMounted(() => {
-      checkLoginStatus()
-    })
-
-    // 搜索功能
-    const handleSearch = () => {
-      if (!searchQuery.value.trim()) {
-        alert('请输入股票代码或名称')
-        return
-      }
-
-      router.push({
-        path: '/search',
-        query: { q: searchQuery.value }
-      })
-    }
-
-    // 搜索框回车事件处理
-    const handleKeyPress = (event) => {
-      if (event.key === 'Enter') {
-        handleSearch()
-      }
-    }
-
     return {
-      searchQuery,
-      goToPage,
-      handleSearch,
-      handleKeyPress,
-      isLoggedIn,
-      username,
-      logout
+      goToPage
     }
   }
 }
@@ -73,95 +24,67 @@ export default {
 
 <template>
   <div class="all">
-    <div class="header">
-      <div class="nav">
-        <div class="search-box">
-          <input 
-            type="text" 
-            placeholder="搜索股票..." 
-            class="search-input" 
-            v-model="searchQuery" 
-            @keypress="handleKeyPress" 
-          />
-          <button 
-            class="search-btn" 
-            @click="handleSearch"
-          >
-            <i class="iconfont icon-sousuo"></i>
-          </button>
-        </div>
-        <div class="auth-links">
-          <!-- 动态显示登录/注册或欢迎信息 -->
-          <template v-if="isLoggedIn">
-            <span class="welcome-message">欢迎您，{{ username }}</span>
-            <a @click="logout" class="auth-link">注销</a>
-          </template>
-          <template v-else>
-            <a @click="goToPage('/login')" class="auth-link">登录</a>
-            <span class="divider">|</span>
-            <a @click="goToPage('/register')" class="auth-link">注册</a>
-          </template>
-        </div>
-      </div>
+    <TheHeader />
+    <div class="content">
       <div class="scroll-container">
         <div class="scroll-text">欢迎来到股票量化交易系统</div>
       </div>
-    </div>
-    <div class="body">
-      <ul>
-        <li>
-          <div class="now">
-            <p class="title"><i class="iconfont icon-shijian"></i>实时行情</p>
-            <span class="body">行情数据实时更新，带来流畅的实时行情体验。</span>
-            <a @click="goToPage('/now')">进入股票市场 ></a>
-          </div>
-        </li>
-        <li>
-          <div class="recommend">
-            <p class="title">
-              <i class="iconfont icon-weibiaoti1"></i>股票推荐
-            </p>
-            <span class="body">基于股评、新闻和股票基本面数据的股票推荐方法。</span>
-            <a @click="goToPage('/recommend')">开始浏览 ></a>
-          </div>
-        </li>
-        <li>
-          <div class="forecast">
-            <p class="title">
-              <i class="iconfont icon-gupiao"></i>股票走势预测
-            </p>
-            <span class="body">采用深度学习模型:引入注意力机制的双向LSTM模型对股票价格变化进行精准预测。</span>
-            <a @click="goToPage('/infore')">点击进入 ></a>
-          </div>
-        </li>
-        <li>
-          <div class="policy">
-            <p class="title">
-              <i class="iconfont icon-package_filled"></i>策略市场
-            </p>
-            <span class="body">编写策略，策略的编写是为了确定具体的买卖规则和条件，以及在何时生成交易信号，从而实现自动化交易。</span>
-            <a @click="goToPage('/policy')">寻找其它策略 ></a>
-          </div>
-        </li>
-        <li>
-          <div class="backtest">
-            <p class="title"><i class="iconfont icon-huice"></i>回测</p>
-            <span class="body">回测是将编写好的交易策略应用于历史市场数据，模拟真实的交易环境，通过评估策略在过去的表现来判断其盈利能力和风险控制能力。</span>
-            <a @click="goToPage('/backtest')">去回测 ></a>
-          </div>
-        </li>
-        <li>
-          <div class="talk">
-            <p class="title">
-              <i class="iconfont icon-leftfont-123"></i>讨论区
-            </p>
-            <span class="body">和其他用户交流的开放平台，用户可以在论坛区域发帖留言和回帖交流，帮助用户交换信息、交流心得体会。</span>
-            <a @click="goToPage('/intalk')">点击进入 ></a>
-          </div>
-        </li>
-      </ul>
-      <div class="ai">
-        <a @click="goToPage('/ai')" class="iconfont icon-robot-3-line"></a>
+      <div class="body">
+        <ul>
+          <li>
+            <div class="now">
+              <p class="title"><i class="iconfont icon-shijian"></i>实时行情</p>
+              <span class="body">行情数据实时更新，带来流畅的实时行情体验。</span>
+              <a @click="goToPage('/now')">进入股票市场 ></a>
+            </div>
+          </li>
+          <li>
+            <div class="recommend">
+              <p class="title">
+                <i class="iconfont icon-weibiaoti1"></i>股票推荐
+              </p>
+              <span class="body">基于股评、新闻和股票基本面数据的股票推荐方法。</span>
+              <a @click="goToPage('/recommend')">开始浏览 ></a>
+            </div>
+          </li>
+          <li>
+            <div class="forecast">
+              <p class="title">
+                <i class="iconfont icon-gupiao"></i>股票走势预测
+              </p>
+              <span class="body">采用深度学习模型:引入注意力机制的双向LSTM模型对股票价格变化进行精准预测。</span>
+              <a @click="goToPage('/infore')">点击进入 ></a>
+            </div>
+          </li>
+          <li>
+            <div class="policy">
+              <p class="title">
+                <i class="iconfont icon-package_filled"></i>策略市场
+              </p>
+              <span class="body">编写策略，策略的编写是为了确定具体的买卖规则和条件，以及在何时生成交易信号，从而实现自动化交易。</span>
+              <a @click="goToPage('/policy')">寻找其它策略 ></a>
+            </div>
+          </li>
+          <li>
+            <div class="backtest">
+              <p class="title"><i class="iconfont icon-huice"></i>回测</p>
+              <span class="body">回测是将编写好的交易策略应用于历史市场数据，模拟真实的交易环境，通过评估策略在过去的表现来判断其盈利能力和风险控制能力。</span>
+              <a @click="goToPage('/backtest')">去回测 ></a>
+            </div>
+          </li>
+          <li>
+            <div class="talk">
+              <p class="title">
+                <i class="iconfont icon-leftfont-123"></i>讨论区
+              </p>
+              <span class="body">和其他用户交流的开放平台，用户可以在论坛区域发帖留言和回帖交流，帮助用户交换信息、交流心得体会。</span>
+              <a @click="goToPage('/intalk')">点击进入 ></a>
+            </div>
+          </li>
+        </ul>
+        <div class="ai">
+          <a @click="goToPage('/ai')" class="iconfont icon-robot-3-line"></a>
+        </div>
       </div>
     </div>
   </div>
@@ -173,136 +96,32 @@ export default {
   background: #2a3a5c;
   min-height: 100vh;
 
-  .header {
-    background: linear-gradient(rgba(26, 31, 53, 0.8), rgba(42, 58, 92, 0.9)),
-                url(../../image/background.jpg) no-repeat center center;
-    background-size: cover;
-    padding: 40px 0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    margin-bottom: 30px;
-    position: relative;
+  .content {
+    padding-top: 60px; // 为导航栏预留空间
+  }
+
+  .scroll-container {
+    width: 100%;
+    height: 120px;
     overflow: hidden;
-
-    .nav {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      padding: 20px 40px;
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 10;
-      
-      .search-box {
-        display: flex;
-        align-items: center;
-        margin-right: 30px;
-        position: relative;
-
-        .search-input {
-          width: 250px;
-          height: 36px;
-          padding: 0 15px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          background: rgba(255, 255, 255, 0.1);
-          color: #e6f1ff;
-          font-size: 14px;
-          transition: all 0.3s ease;
-          margin-right: 20px;
-          padding-right: 40px;
-
-          &::placeholder {
-            color: rgba(230, 241, 255, 0.5);
-          }
-
-          &:focus {
-            outline: none;
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-          }
-        }
-
-        .search-btn {
-          position: absolute; // 改为绝对定位
-          right: 25px;      // 调整右侧位置
-          top: 50%;         // 垂直居中
-          transform: translateY(-50%); // 精确垂直居中
-          background: transparent;
-          color: #e6f1ff;
-          border: none;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          padding: 10px;     // 增加点击区域
-          display: flex;    // 使用 flex 布局
-          align-items: center;
-          justify-content: center;
-          &:hover {
-            color: #64b3f4;
-          }
-
-          i {
-            font-size: 18px;
-            border-left:#fff;
-          }
-        }
-      }
-
-      .auth-links {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-
-        .auth-link {
-          color: #e6f1ff;
-          text-decoration: none;
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          padding: 6px 0;
-          border-radius: 6px;
-
-          &:hover {
-            color: #64b3f4;
-          }
-        }
-
-        .divider {
-          color: rgba(230, 241, 255, 0.3);
-        }
-
-        .welcome-message {
-          color: #e6f1ff;
-          font-size: 14px;
-        }
-      }
+    white-space: nowrap;
+    line-height: 120px;
+    .scroll-text {
+      text-align: center;
+      display: inline-block;
+      font-size: 2.8rem;
+      color: #e6f1ff;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      animation: scrollText 10s linear infinite;
+      padding-left: 100%;
     }
 
-    .scroll-container {
-      width: 100%;
-      height: 120px;
-      overflow: hidden;
-      white-space: nowrap;
-      line-height: 120px;
-      .scroll-text {
-        text-align: center;
-        display: inline-block;
-        font-size: 2.8rem;
-        color: #e6f1ff;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        animation: scrollText 10s linear infinite;
-        padding-left: 100%;
+    @keyframes scrollText {
+      0% {
+        transform: translateX(100%);
       }
-
-      @keyframes scrollText {
-        0% {
-          transform: translateX(100%);
-        }
-        100% {
-          transform: translateX(-100%);
-        }
+      100% {
+        transform: translateX(-100%);
       }
     }
   }

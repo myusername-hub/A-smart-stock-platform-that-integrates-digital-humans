@@ -3,6 +3,9 @@ from flask_cors import CORS
 import pandas as pd
 from datetime import datetime, timedelta
 import os
+import jwt
+from functools import wraps
+from models import User, users
 
 app = Flask(__name__)
 CORS(app)
@@ -16,6 +19,30 @@ BASE_DIR = r"D:\my first contribute\stock\stock_daily_two_years"
 # 添加API前缀
 API_PREFIX = '/api'
 
+# JWT配置
+JWT_SECRET = 'your-secret-key'
+JWT_ALGORITHM = 'HS256'
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        
+        if not token:
+            return jsonify({'message': '缺少认证令牌'}), 401
+        
+        try:
+            token = token.split(' ')[1]
+            data = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            current_user = users.get(data['username'])
+            if not current_user:
+                return jsonify({'message': '用户不存在'}), 401
+        except:
+            return jsonify({'message': '无效的令牌'}), 401
+
+        return f(current_user, *args, **kwargs)
+    
+    return decorated
 
 def read_stock_data_from_csv(stock_code):
     """从CSV文件读取股票数据"""
@@ -78,8 +105,41 @@ def convert_to_period_data(df, period):
     return period_data.reset_index()
 
 
+@app.route(f'{API_PREFIX}/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'message': '用户名和密码不能为空'}), 400
+    
+    if username in users:
+        return jsonify({'message': '用户名已存在'}), 400
+    
+    users[username] = User(username, password)
+    return jsonify({'message': '注册成功'}), 201
+
+@app.route(f'{API_PREFIX}/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    user = users.get(username)
+    if not user or not user.check_password(password):
+        return jsonify({'message': '用户名或密码错误'}), 401
+    
+    token = jwt.encode({
+        'username': username,
+        'exp': datetime.utcnow() + timedelta(days=1)
+    }, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    return jsonify({'token': token})
+
 @app.route(f'{API_PREFIX}/stock_daily_data', methods=['GET'])
-def get_stock_data():
+@token_required
+def get_stock_data(current_user):
     all_stock_data = []
 
     for code in stock_codes:
@@ -96,7 +156,8 @@ def get_stock_data():
 
 
 @app.route(f'{API_PREFIX}/stock_kline_data/<stock_code>', methods=['GET'])
-def get_stock_kline_data(stock_code):
+@token_required
+def get_stock_kline_data(current_user, stock_code):
     try:
         period = request.args.get('period', 'day')
         
