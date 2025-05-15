@@ -58,6 +58,8 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { stockNameMap } from '@/utils/stockMap'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { Search } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const chartRef = ref(null)
@@ -74,33 +76,49 @@ const stockList = Object.entries(stockNameMap).map(([code, name]) => ({
   label: `${name} (${code})`
 }))
 
-// 生成模拟数据
-const mockHistoricalData = {
-  '688111': generateMockData(30, 110, 130),  // 调整价格范围
-  '002230': generateMockData(30, 95, 120),
-  '688777': generateMockData(30, 100, 140),
-  '688375': generateMockData(30, 90, 125),
-  '688169': generateMockData(30, 105, 150),
-  '688120': generateMockData(30, 92, 135)
-}
+// 修改获取历史数据的方法
+const getHistoricalData = async (stockCode) => {
+  try {
+    const response = await fetch(`/stock_daily_two_years/${stockCode}.csv`)
+    const csvData = await response.text()
+    
+    // 解析CSV数据
+    const rows = csvData.trim().split('\n')
+    const headers = rows[0].split(',')
+    const dateIndex = headers.indexOf('trade_date')
+    const closeIndex = headers.indexOf('close')
 
-// 生成模拟数据的函数
-function generateMockData(days, minPrice, maxPrice) {
-  const data = []
-  const today = new Date()
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    data.push({
-      trade_date: date.toISOString().split('T')[0],
-      close: (Math.random() * (maxPrice - minPrice) + minPrice).toFixed(2)
+    // 获取最近7天的数据并格式化日期
+    const historicalData = rows.slice(1, 8).map(row => {
+      const values = row.split(',')
+      const date = values[dateIndex]
+      // 将YYYYMMDD格式转换为YYYY-MM-DD
+      const formattedDate = `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`
+      return {
+        trade_date: formattedDate,
+        close: parseFloat(values[closeIndex]).toFixed(2)
+      }
     })
+
+    return historicalData
+  } catch (error) {
+    console.error('读取历史数据失败:', error)
+    return []
   }
-  return data
 }
 
-// 生成预测数据的函数
+// 初始化图表
+const initChart = () => {
+  if (chartRef.value) {
+    chart = echarts.init(chartRef.value)
+    const currentStock = JSON.parse(localStorage.getItem('currentStock'))
+    const defaultStockCode = currentStock?.code || '688111'
+    currentStockCode.value = defaultStockCode
+    updateChartData(defaultStockCode)
+  }
+}
+
+// 修改预测数据生成函数
 function generateForecastData(historicalData, days = 10) {
   const lastValue = parseFloat(historicalData[historicalData.length - 1].close)
   const lastDate = new Date(historicalData[historicalData.length - 1].trade_date)
@@ -109,10 +127,13 @@ function generateForecastData(historicalData, days = 10) {
   for (let i = 1; i <= days; i++) {
     const date = new Date(lastDate)
     date.setDate(date.getDate() + i)
-    // 在最后一个历史价格的基础上随机波动
+    // 格式化日期为YYYY-MM-DD
+    const formattedDate = date.toISOString().split('T')[0]
+    
+    // 生成预测价格
     const predictedValue = lastValue * (1 + (Math.random() - 0.4) * 0.1)
     data.push({
-      trade_date: date.toISOString().split('T')[0],
+      trade_date: formattedDate,
       close: predictedValue.toFixed(2)
     })
   }
@@ -129,112 +150,113 @@ const calculateYAxisRange = (values) => {
   }
 }
 
-// 初始化图表
-const initChart = () => {
-  if (chartRef.value) {
-    chart = echarts.init(chartRef.value)
-    const defaultStockCode = '688111'
-    currentStockCode.value = defaultStockCode // 设置默认股票代码
-    updateChartData(defaultStockCode)
-  }
-}
-
 // 更新图表数据
-const updateChartData = (stockCode) => {
+const updateChartData = async (stockCode) => {
   try {
     loading.value = true
-    const mockData = mockHistoricalData[stockCode]
-    const stockName = stockNameMap[stockCode]
+    const historicalData = await getHistoricalData(stockCode)
     
-    if (mockData && chart) {
-      // 生成预测数据
-      const forecastData = generateForecastData(mockData)
-      
-      // 合并历史数据和预测数据的日期和值
-      const dates = [...mockData.map(item => item.trade_date), ...forecastData.map(item => item.trade_date)]
-      const historicalValues = mockData.map(item => parseFloat(item.close))
-      const forecastValues = forecastData.map(item => parseFloat(item.close))
-
-      // 计算Y轴范围
-      const allValues = [...historicalValues, ...forecastValues]
-      const yAxisRange = calculateYAxisRange(allValues)
-      
-      const option = {
-        title: {
-          text: `${stockName} (${stockCode}) - 历史数据与预测趋势`,
-          left: 'center',
-          top: '20px'
-        },
-        tooltip: {
-          trigger: 'axis',
-          formatter: function(params) {
-            const date = params[0].axisValue
-            // 根据日期判断是否为预测数据
-            const isInForecastRange = new Date(date) > new Date(mockData[mockData.length - 1].trade_date)
-            
-            if (isInForecastRange) {
-              const forecastPoint = params.find(p => p.seriesName === '预测数据')
-              return forecastPoint && forecastPoint.value !== null 
-                ? `日期：${date}<br/>预测价格：${forecastPoint.value}` 
-                : ''
-            } else {
-              const historyPoint = params.find(p => p.seriesName === '历史数据')
-              return historyPoint && historyPoint.value !== null 
-                ? `日期：${date}<br/>历史价格：${historyPoint.value}` 
-                : ''
-            }
-          }
-        },
-        legend: {
-          data: ['历史数据', '预测数据'],
-          top: '50px'
-        },
-        xAxis: {
-          type: 'category',
-          data: dates,
-          axisLabel: {
-            formatter: (value) => value.substring(5) // 只显示月-日
-          }
-        },
-        yAxis: {
-          type: 'value',
-          scale: true,
-          min: yAxisRange.min,
-          max: yAxisRange.max,
-          splitLine: {
-            show: true,
-            lineStyle: {
-              type: 'dashed'
-            }
-          },
-          axisLabel: {
-            formatter: '{value}'
-          }
-        },
-        series: [
-          {
-            name: '历史数据',
-            type: 'line',
-            data: [...historicalValues, ...new Array(forecastValues.length).fill(null)],
-            smooth: true,
-            itemStyle: { color: '#FF6B6B' },
-            lineStyle: { width: 3 }
-          },
-          {
-            name: '预测数据',
-            type: 'line',
-            data: [...new Array(historicalValues.length).fill(null), ...forecastValues],
-            smooth: true,
-            itemStyle: { color: '#4D96FF' },
-            lineStyle: { 
-              width: 3,
-              type: 'dashed'
-            }
-          }
-        ]
-      }
-      chart.setOption(option, true)
+    if (!historicalData || historicalData.length === 0) {
+      ElMessage.warning('无法生成图表数据')
+      return
     }
+
+    const currentStock = JSON.parse(localStorage.getItem('currentStock'))
+    
+    if (!currentStock) {
+      ElMessage.warning('无法获取股票数据')
+      return
+    }
+
+    // 生成预测数据
+    const forecastData = generateForecastData(historicalData)
+    
+    // 合并历史数据和预测数据的日期和值
+    const dates = [...historicalData.map(item => item.trade_date), ...forecastData.map(item => item.trade_date)]
+    const historicalValues = historicalData.map(item => parseFloat(item.close))
+    const forecastValues = forecastData.map(item => parseFloat(item.close))
+
+    // 计算Y轴范围
+    const allValues = [...historicalValues, ...forecastValues]
+    const yAxisRange = calculateYAxisRange(allValues)
+    
+    const stockName = currentStock?.name || stockNameMap[stockCode] || '未知股票'
+
+    const option = {
+      title: {
+        text: `${stockName} (${stockCode}) - 历史数据与预测趋势`,
+        left: 'center',
+        top: '20px'
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: function(params) {
+          const date = params[0].axisValue
+          // 根据日期判断是否为预测数据
+          const isInForecastRange = new Date(date) > new Date(historicalData[historicalData.length - 1].trade_date)
+          
+          if (isInForecastRange) {
+            const forecastPoint = params.find(p => p.seriesName === '预测数据')
+            return forecastPoint && forecastPoint.value !== null 
+              ? `日期：${date}<br/>预测价格：${forecastPoint.value}` 
+              : ''
+          } else {
+            const historyPoint = params.find(p => p.seriesName === '历史数据')
+            return historyPoint && historyPoint.value !== null 
+              ? `日期：${date}<br/>历史价格：${historyPoint.value}` 
+              : ''
+          }
+        }
+      },
+      legend: {
+        data: ['历史数据', '预测数据'],
+        top: '50px'
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: {
+          formatter: (value) => value.substring(5) // 只显示月-日
+        }
+      },
+      yAxis: {
+        type: 'value',
+        scale: true,
+        min: yAxisRange.min,
+        max: yAxisRange.max,
+        splitLine: {
+          show: true,
+          lineStyle: {
+            type: 'dashed'
+          }
+        },
+        axisLabel: {
+          formatter: '{value}'
+        }
+      },
+      series: [
+        {
+          name: '历史数据',
+          type: 'line',
+          data: [...historicalValues, ...new Array(forecastValues.length).fill(null)],
+          smooth: true,
+          itemStyle: { color: '#FF6B6B' },
+          lineStyle: { width: 3 }
+        },
+        {
+          name: '预测数据',
+          type: 'line',
+          data: [...new Array(historicalValues.length).fill(null), ...forecastValues],
+          smooth: true,
+          itemStyle: { color: '#4D96FF' },
+          lineStyle: { 
+            width: 3,
+            type: 'dashed'
+          }
+        }
+      ]
+    }
+    chart.setOption(option, true)
   } catch (error) {
     console.error('更新图表失败:', error)
     ElMessage.error('更新图表失败')

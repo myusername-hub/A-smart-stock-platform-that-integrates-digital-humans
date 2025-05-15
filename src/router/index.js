@@ -30,8 +30,8 @@ const routes = [
   },
   {
     path: '/forecast',
-    name: 'Forecast',
-    component: Forecast
+    name: 'forecast',
+    component: () => import('@/views/Forecast/index.vue')
   },
   {
     path: '/policy',
@@ -72,6 +72,11 @@ const routes = [
     path: '/intalk',
     name: 'intalk',
     component: () => import('@/views/Talk/Intalk.vue')
+  },
+  {
+    path: '/infore',
+    name: 'infore',
+    component: () => import('@/views/Forecast/Infore.vue')
   }
 ]
 

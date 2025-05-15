@@ -29,6 +29,10 @@ export default defineConfig({
         target: 'https://cloud.fastgpt.cn',
         changeOrigin: true
       }
+    },
+    static: {
+      directory: path.resolve(__dirname, './stock_daily_two_years'),
+      publicPath: '/stock_daily_two_years/'
     }
   },
   ssr: {
@@ -52,5 +56,6 @@ export default defineConfig({
         additionalData: ``
       }
     }
-  }
+  },
+  assetsInclude: ['**/*.csv'],  // 添加这一行
 })

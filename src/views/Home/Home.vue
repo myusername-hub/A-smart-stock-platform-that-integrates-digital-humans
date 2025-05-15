@@ -131,7 +131,7 @@ export default {
               <i class="iconfont icon-gupiao"></i>股票走势预测
             </p>
             <span class="body">采用深度学习模型:引入注意力机制的双向LSTM模型对股票价格变化进行精准预测。</span>
-            <a @click="goToPage('/forecast')">点击进入 ></a>
+            <a @click="goToPage('/infore')">点击进入 ></a>
           </div>
         </li>
         <li>
