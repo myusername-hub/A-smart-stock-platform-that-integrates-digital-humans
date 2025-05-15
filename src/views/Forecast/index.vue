@@ -69,57 +69,63 @@ const filteredStocks = ref([])
 const loading = ref(false)
 const currentIndex = ref(-1) // 当前选中的建议项索引
 const currentStockCode = ref('') // 存储当前选中的股票代码
-let chart = null
+let chart = null  // 修改为普通变量而不是 ref
 
 const stockList = Object.entries(stockNameMap).map(([code, name]) => ({
   value: code,
   label: `${name} (${code})`
 }))
 
-// 修改获取历史数据的方法
-const getHistoricalData = async (stockCode) => {
-  try {
-    const response = await fetch(`/stock_daily_two_years/${stockCode}.csv`)
-    const csvData = await response.text()
-    
-    // 解析CSV数据
-    const rows = csvData.trim().split('\n')
-    const headers = rows[0].split(',')
-    const dateIndex = headers.indexOf('trade_date')
-    const closeIndex = headers.indexOf('close')
-
-    // 获取最近7天的数据并格式化日期
-    const historicalData = rows.slice(1, 8).map(row => {
-      const values = row.split(',')
-      const date = values[dateIndex]
-      // 将YYYYMMDD格式转换为YYYY-MM-DD
-      const formattedDate = `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`
-      return {
-        trade_date: formattedDate,
-        close: parseFloat(values[closeIndex]).toFixed(2)
-      }
-    })
-
-    return historicalData
-  } catch (error) {
-    console.error('读取历史数据失败:', error)
-    return []
-  }
-}
-
-// 初始化图表
+// 添加初始化图表函数
 const initChart = () => {
-  if (chartRef.value) {
+  if (!chartRef.value) return
+  
+  try {
+    if (chart) {
+      chart.dispose()
+    }
     chart = echarts.init(chartRef.value)
+    // 获取当前选中的股票，如果没有则使用默认股票
     const currentStock = JSON.parse(localStorage.getItem('currentStock'))
     const defaultStockCode = currentStock?.code || '688111'
     currentStockCode.value = defaultStockCode
     updateChartData(defaultStockCode)
+  } catch (error) {
+    console.error('初始化图表失败:', error)
+    ElMessage.error('初始化图表失败')
+  }
+}
+
+// 修改获取历史数据的方法
+const getHistoricalData = async (stockCode) => {
+  try {
+    const response = await axios.get(`http://localhost:5000/api/daily_data/${stockCode}`)
+    
+    if (response.data?.status === 'success' && Array.isArray(response.data.data?.daily_data)) {
+      // 获取最近7天的数据
+      return response.data.data.daily_data
+        .slice(0, 7)
+        .map(item => ({
+          trade_date: item.trade_date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
+          close: parseFloat(item.close).toFixed(2)
+        }))
+        .reverse() // 确保日期升序排列
+    }
+    
+    throw new Error('数据格式不正确')
+  } catch (error) {
+    console.error('读取历史数据失败:', error)
+    ElMessage.error('获取历史数据失败')
+    return []
   }
 }
 
 // 修改预测数据生成函数
-function generateForecastData(historicalData, days = 10) {
+const generateForecastData = (historicalData, days = 10) => {
+  if (!historicalData || historicalData.length === 0) {
+    return []
+  }
+
   const lastValue = parseFloat(historicalData[historicalData.length - 1].close)
   const lastDate = new Date(historicalData[historicalData.length - 1].trade_date)
   const data = []
@@ -150,14 +156,14 @@ const calculateYAxisRange = (values) => {
   }
 }
 
-// 更新图表数据
+// 修改更新图表数据的方法
 const updateChartData = async (stockCode) => {
   try {
     loading.value = true
     const historicalData = await getHistoricalData(stockCode)
     
     if (!historicalData || historicalData.length === 0) {
-      ElMessage.warning('无法生成图表数据')
+      ElMessage.warning('无法获取历史数据')
       return
     }
 

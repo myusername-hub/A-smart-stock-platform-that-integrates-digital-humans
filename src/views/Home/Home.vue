@@ -97,7 +97,7 @@ export default {
   min-height: 100vh;
 
   .content {
-    padding-top: 60px; // 为导航栏预留空间
+    padding-top: 60px; // 为固定导航栏留出空间
   }
 
   .scroll-container {

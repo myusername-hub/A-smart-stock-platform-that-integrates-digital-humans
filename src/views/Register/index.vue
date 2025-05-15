@@ -11,6 +11,7 @@ export default {
     const formData = ref({
       username: '',
       password: '',
+      confirmPassword: '', // 添加确认密码字段
       remember: false
     })
     const loading = ref(false)
@@ -21,14 +22,35 @@ export default {
         return
       }
 
+      if (formData.value.password !== formData.value.confirmPassword) {
+        alert('两次输入的密码不一致')
+        return
+      }
+
+      if (formData.value.password.length < 6) {
+        alert('密码长度不能少于6位')
+        return
+      }
+
       loading.value = true
       try {
         await authStore.register(formData.value.username, formData.value.password)
-        localStorage.setItem('fromRegister', 'true') // 添加这行
+        localStorage.setItem('fromRegister', 'true')
+        alert('注册成功，正在为您自动跳转到登录页面')
         router.push('/login')
       } catch (error) {
         console.error('注册失败:', error)
-        alert('注册失败：' + (error.response?.data?.message || '请稍后重试'))
+        let errorMessage = '注册失败：'
+        if (error.message === '用户已存在') {
+          errorMessage += '该用户名已被注册'
+        } else if (error.message.includes('password')) {
+          errorMessage += '密码格式不正确，请使用6-20位字符'
+        } else if (error.message.includes('username')) {
+          errorMessage += '用户名不合法，请使用3-20位字符'
+        } else {
+          errorMessage += '服务器错误，请稍后重试'
+        }
+        alert(errorMessage)
       } finally {
         loading.value = false
       }
@@ -68,6 +90,18 @@ export default {
               type="password" 
               v-model="formData.password"
               placeholder="请输入密码"
+              :disabled="loading"
+            />
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span class="label-text">确认密码</span>
+            <input 
+              type="password" 
+              v-model="formData.confirmPassword"
+              placeholder="请再次输入密码"
               :disabled="loading"
             />
           </label>

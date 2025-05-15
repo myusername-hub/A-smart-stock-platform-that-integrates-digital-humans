@@ -96,33 +96,31 @@ const tradeList = ref([])
 
 // K线周期选项
 const periods = [
-  { label: '日K', value: 'day' },
-  { label: '周K', value: 'week' },
+  { label: '年K', value: 'year' },  // 调整顺序，把年K放在最前面
   { label: '月K', value: 'month' },
-  { label: '年K', value: 'year' }
+  { label: '周K', value: 'week' },
+  { label: '日K', value: 'day' }
 ]
-const currentPeriod = ref('day')
+const currentPeriod = ref('year')  // 修改默认值为'year'
 
 const fetchKLineData = async () => {
   try {
-    // 去掉可能的后缀并补全为6位
     const code = (stockData.value?.code || '688111').split('.')[0].padStart(6, '0')
-    console.log('请求K线数据，代码:', code)
+    console.log('请求K线数据，代码:', code, '周期:', currentPeriod.value)
     
     const url = `http://localhost:5000/api/stock_kline_data/${code}?period=${currentPeriod.value}`
-    console.log('请求URL:', url)
-    
     const response = await axios.get(url)
     
-    if (response.status === 200 && Array.isArray(response.data)) {
-      console.log('成功获取数据，条数:', response.data.length)
-      return response.data
+    if (response.data?.status === 'success' && Array.isArray(response.data.data)) {
+      const data = response.data.data
+      console.log(`成功获取${currentPeriod.value}K线数据，条数:`, data.length)
+      return data
     }
     
     console.error('响应格式错误:', response)
     return []
   } catch (error) {
-    console.error('请求失败:', error.response || error)
+    console.error('请求失败:', error)
     return []
   }
 }
@@ -142,10 +140,11 @@ const updateChart = async () => {
   const option = {
     title: { 
       text: `${stockData.value?.name} - ${
-        currentPeriod.value === 'day' ? '日K(分时)' : 
-        currentPeriod.value === 'week' ? '周K(7天)' : 
-        currentPeriod.value === 'month' ? '月K(30天)' : '年K(365天)'
+        currentPeriod.value === 'day' ? '日K线' : 
+        currentPeriod.value === 'week' ? '周K线' : 
+        currentPeriod.value === 'month' ? '月K线' : '年K线'
       }`,
+      subtext: '右上角切换周期',
       left: 'center'
     },
     tooltip: {
@@ -157,7 +156,8 @@ const updateChart = async () => {
                 开盘：${data[0]}<br/>
                 收盘：${data[1]}<br/>
                 最低：${data[2]}<br/>
-                最高：${data[3]}<br/>`
+                最高：${data[3]}<br/>
+                ${currentPeriod.value !== 'day' ? `成交量：${data[4]}<br/>` : ''}`
       }
     },
     grid: {
@@ -168,7 +168,7 @@ const updateChart = async () => {
     },
     xAxis: {
       type: 'category',
-      data: klineData.map(item => item.trade_date),
+      data: klineData.map(item => item.trade_date.toString()),
       boundaryGap: true,
       axisLine: { onZero: false },
       splitLine: { show: false }
@@ -196,10 +196,10 @@ const updateChart = async () => {
         name: '价格区间',
         type: 'candlestick',
         data: klineData.map(item => ([
-          parseFloat(item.open),  // 开盘价
-          parseFloat(item.close), // 收盘价
-          parseFloat(item.low),   // 最低价
-          parseFloat(item.high)   // 最高价
+          parseFloat(item.open),
+          parseFloat(item.close),
+          parseFloat(item.low),
+          parseFloat(item.high)
         ])),
         itemStyle: {
           color: '#ef232a',

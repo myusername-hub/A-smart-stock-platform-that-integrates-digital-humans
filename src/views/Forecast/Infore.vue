@@ -11,38 +11,42 @@ const stockList = ref([])
 const generateRealData = async () => {
   const result = []
   
-  // 读取每个股票的历史数据
-  for (const [code, name] of Object.entries(stockNameMap)) {
-    try {
-      // 使用axios获取csv文件
-      const response = await axios.get(`/stock_daily_two_years/${code}.csv`)
-      const csvData = response.data
-      
-      // 解析CSV数据
-      const rows = csvData.split('\n')
-      const lastWeekData = rows.slice(1, 8) // 获取最近7天数据
-      
-      // 计算周平均价
-      const weekAvgPrice = lastWeekData.reduce((sum, row) => {
-        const fields = row.split(',')
-        return sum + parseFloat(fields[5]) // close价格在第6列
-      }, 0) / lastWeekData.length
-      
-      // 生成预测数据
-      const nextWeekAvgPrice = weekAvgPrice * (1 + (Math.random() - 0.4) * 0.15)
-      const predictedChange = ((nextWeekAvgPrice - weekAvgPrice) / weekAvgPrice * 100).toFixed(2)
-      
-      result.push({
-        code,
-        name,
-        weekAvgPrice: weekAvgPrice.toFixed(2),
-        nextWeekAvgPrice: nextWeekAvgPrice.toFixed(2),
-        predictedChange
-      })
-    } catch (error) {
-      console.error(`处理${code}数据失败:`, error)
+  try {
+    // 获取所有股票的历史数据
+    const response = await axios.get('http://localhost:5000/api/stock_daily_data')
+    
+    if (response.data?.status === 'success' && Array.isArray(response.data.data)) {
+      for (const stock of response.data.data) {
+        if (!stock.daily_data || !Array.isArray(stock.daily_data)) continue
+        
+        // 获取最近7天的数据
+        const lastWeekData = stock.daily_data.slice(0, 7)
+        if (lastWeekData.length === 0) continue
+        
+        // 计算周平均价
+        const weekAvgPrice = lastWeekData.reduce((sum, day) => 
+          sum + parseFloat(day.close || 0), 0) / lastWeekData.length
+        
+        // 生成预测数据
+        const nextWeekAvgPrice = weekAvgPrice * (1 + (Math.random() - 0.4) * 0.15)
+        const predictedChange = ((nextWeekAvgPrice - weekAvgPrice) / weekAvgPrice * 100).toFixed(2)
+        
+        // 使用完整的股票代码
+        const fullCode = stock.code.padStart(6, '0')
+        
+        result.push({
+          code: fullCode,
+          name: stockNameMap[fullCode] || '未知',
+          weekAvgPrice: weekAvgPrice.toFixed(2),
+          nextWeekAvgPrice: nextWeekAvgPrice.toFixed(2),
+          predictedChange
+        })
+      }
     }
+  } catch (error) {
+    console.error('获取股票数据失败:', error)
   }
+  
   return result
 }
 
@@ -69,7 +73,8 @@ const viewDetails = (stock) => {
 onMounted(async () => {
   try {
     const data = await generateRealData()
-    stockList.value = data
+    stockList.value = data.filter(stock => stock.name !== '未知') // 过滤掉未知股票
+    console.log('预测数据:', stockList.value) // 添加日志输出
   } catch (error) {
     console.error('数据加载失败:', error)
   }

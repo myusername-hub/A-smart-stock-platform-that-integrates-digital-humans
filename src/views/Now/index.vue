@@ -1,24 +1,28 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
-import axios from 'axios'
+import { fetchWithRetry } from '@/utils/api'
 import { stockNameMap } from '@/utils/stockMap'
 
 export default {
   setup() {
+    // 初始化为空数组
     const stockData = ref([])
     const loading = ref(false)
     const error = ref(null)
     const currentPage = ref(1)
-    const pageSize = ref(5)  // 每页显示5条数据
+    const pageSize = ref(5)
     const searchQuery = ref('')
 
+    // 确保数据是数组
     const hasErrors = computed(() => {
-      return stockData.value.some(stock => stock.message);
-    });
+      return Array.isArray(stockData.value) && 
+             stockData.value.some(stock => stock?.message)
+    })
 
     const validStockData = computed(() => {
-      return stockData.value.filter(stock => !stock.message);
-    });
+      if (!Array.isArray(stockData.value)) return []
+      return stockData.value.filter(stock => !stock?.message)
+    })
 
     const paginatedStockData = computed(() => {
       const start = (currentPage.value - 1) * pageSize.value
@@ -50,11 +54,29 @@ export default {
       try {
         loading.value = true
         error.value = null
-        const response = await axios.get('http://localhost:5000/api/stock_daily_data')  // 修改API路径
-        stockData.value = response.data
+        console.log('开始获取数据...')
+        
+        const response = await fetchWithRetry('/api/stock_data')
+        console.log('服务器响应:', response)
+        
+        if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
+          stockData.value = response.data.data.map(item => {
+            const fullCode = item.code.padStart(6, '0') // 补全股票代码为6位
+            return {
+              ...item.latest_data,
+              code: fullCode,
+              ts_code: fullCode,
+              name: stockNameMap[fullCode] || '未知'
+            }
+          })
+          console.log('处理后的数据:', stockData.value)
+        } else {
+          throw new Error(response?.data?.message || '数据格式不正确')
+        }
       } catch (err) {
-        console.error('获取数据失败:', err)
-        error.value = '连接服务器失败，请检查后端服务是否启动'
+        console.error('数据获取失败:', err)
+        error.value = '无法获取数据，请确保后端服务正常运行'
+        stockData.value = []
       } finally {
         loading.value = false
       }
@@ -72,9 +94,15 @@ export default {
       stockData.value = filteredList
     }
 
+    // 清理定时器
     onMounted(() => {
       fetchStockData()
-      const timer = setInterval(fetchStockData, 30000)
+      const timer = setInterval(() => {
+        if (!error.value) {  // 只在没有错误时继续请求
+          fetchStockData()
+        }
+      }, 60000)
+      
       return () => clearInterval(timer)
     })
 
@@ -150,10 +178,10 @@ export default {
       </div>
 
       <div v-for="stock in paginatedStockData" 
-           :key="stock.ts_code" 
+           :key="stock.code" 
            class="stock-row">
-        <div>{{ stock.ts_code }}</div>
-        <div>{{ getStockName(stock.ts_code) }}</div>
+        <div>{{ stock.code }}</div>
+        <div>{{ stock.name }}</div>
         <div>{{ stock.close?.toFixed(2) }}</div>
         <div :class="[stock.change >= 0 ? 'price-up' : 'price-down']">
           {{ stock.change?.toFixed(2) }}

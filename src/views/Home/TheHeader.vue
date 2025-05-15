@@ -18,7 +18,7 @@
         <div class="auth-links">
           <template v-if="isLoggedIn">
             <span class="welcome-message">欢迎您，{{ username }}</span>
-            <a @click="logout" class="auth-link">注销</a>
+            <a @click="logout" class="auth-link">退出登录</a>
           </template>
           <template v-else>
             <a @click="goToPage('/login')" class="auth-link">登录</a>

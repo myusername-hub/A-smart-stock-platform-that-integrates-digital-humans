@@ -1,15 +1,6 @@
 <template>
-  <div class="app">
-    <TheHeader />
-    <main class="main-content">
-      <router-view></router-view>
-    </main>
-  </div>
+  <router-view></router-view>
 </template>
-
-<script setup>
-import TheHeader from '@/views/Home/TheHeader.vue'
-</script>
 
 <style>
 body {

@@ -1,13 +1,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { stockNameMap } from '@/utils/stockMap'
 
 const route = useRoute()
+const router = useRouter()
 const stockCode = route.params.code
 const stockName = stockNameMap[stockCode] || '未知股票'
 const comments = ref([])
 const newComment = ref('')
+const username = ref('')
 
 // 模拟评论数据
 const mockComments = [
@@ -58,13 +60,26 @@ const updateDiscussionCount = () => {
   }
 }
 
+// 检查登录状态
+const checkLoginStatus = () => {
+  const user = JSON.parse(localStorage.getItem('user'))
+  if (!user || !user.username) {
+    alert('请先登录')
+    router.push('/login')
+    return false
+  }
+  username.value = user.username
+  return true
+}
+
 // 发布评论
 const submitComment = async () => {
+  if (!checkLoginStatus()) return
   if (!newComment.value.trim()) return
   
   const newCommentData = {
     id: Date.now(),
-    username: '当前用户',
+    username: username.value,
     avatar: 'https://picsum.photos/42',
     content: newComment.value,
     time: new Date().toLocaleString(),
@@ -92,6 +107,7 @@ const handleLike = (comment) => {
 }
 
 onMounted(() => {
+  checkLoginStatus()
   fetchComments()
 })
 </script>

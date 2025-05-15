@@ -2,35 +2,41 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { stockNameMap } from '@/utils/stockMap'
+import { fetchWithRetry } from '@/utils/api'
 import axios from 'axios'
 
 const router = useRouter()
 const stockList = ref([])
+const stockData = ref([])
 const loading = ref(false)
 const error = ref(null)
-const collectedStocks = ref([]) // 改用数组存储已收藏的股票代码
+const collectedStocks = ref([])
 
 // 数据处理函数
 const processStockData = (data) => {
   if (!Array.isArray(data)) return []
   
   return data.map(stock => {
-    // 确保 ts_code 是字符串类型并补全为6位
-    const stockCode = String(stock.ts_code).padStart(6, '0')
-    const change = parseFloat(stock.change)  // 直接使用原始涨跌额，保留正负号
+    const stockCode = stock.code
+    const stockInfo = stock.daily_data?.[0] || {}
     
+    // 涨跌幅计算，使用原始数据中的pct_change字段
+    const price = parseFloat(stockInfo.close || 0)
+    const change = parseFloat(stockInfo.change || 0)
+    const changeRate = parseFloat(stockInfo.pct_change || 0) // 直接使用pct_change字段
+
     return {
       code: stockCode,
       name: stockNameMap[stockCode] || '未知',
-      price: parseFloat(stock.close).toFixed(2),
-      change: change.toFixed(2),  // 保留正负号显示涨跌额
-      changeRate: parseFloat(stock.pct_change).toFixed(2),
-      open: parseFloat(stock.open).toFixed(2),
-      high: parseFloat(stock.high).toFixed(2),
-      low: parseFloat(stock.low).toFixed(2),
-      volume: `${(parseFloat(stock.vol) / 10000).toFixed(2)}`,
-      amount: `${(parseFloat(stock.amount) / 100000000).toFixed(2)}`,
-      amplitude: parseFloat(stock.amplitude).toFixed(2)
+      price: price.toFixed(2),
+      change: change.toFixed(2),
+      changeRate: changeRate.toFixed(2), // 使用原始涨跌幅数据
+      open: parseFloat(stockInfo.open || 0).toFixed(2),
+      high: parseFloat(stockInfo.high || 0).toFixed(2),
+      low: parseFloat(stockInfo.low || 0).toFixed(2),
+      volume: `${(parseFloat(stockInfo.vol || 0) / 10000).toFixed(2)}`,
+      amount: `${(parseFloat(stockInfo.amount || 0) / 100000000).toFixed(2)}`,
+      amplitude: ((parseFloat(stockInfo.high || 0) - parseFloat(stockInfo.low || 0)) / price * 100).toFixed(2)
     }
   })
 }
@@ -40,11 +46,21 @@ const fetchStockData = async () => {
   try {
     loading.value = true
     error.value = null
-    const response = await axios.get('http://localhost:5000/api/stock_daily_data')  // 添加/api前缀
-    stockList.value = processStockData(response.data)
+    
+    const response = await fetchWithRetry('/api/stock_daily_data')
+    console.log('原始数据:', response.data)
+    
+    if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
+      const validData = response.data.data.filter(item => item.daily_data?.length > 0)
+      stockList.value = processStockData(validData)
+      console.log('处理后数据:', stockList.value)
+    } else {
+      throw new Error('数据格式不正确')
+    }
   } catch (err) {
-    console.error('获取数据失败:', err)
-    error.value = '获取数据失败，请检查网络连接'
+    console.error('数据获取失败:', err)
+    error.value = '无法获取历史数据，请确保后端服务正常运行'
+    stockList.value = []
   } finally {
     loading.value = false
   }
