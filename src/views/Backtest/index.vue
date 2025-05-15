@@ -95,6 +95,46 @@
         </button>
       </form>
     </div>
+
+    <!-- 添加图表分析区域 -->
+    <div class="analysis-section">
+      <div class="chart-row">
+        <!-- 资产分布饼图 -->
+        <div class="chart-card card">
+          <h3 class="section-title">资产分布</h3>
+          <div ref="pieChartRef" class="chart"></div>
+        </div>
+        
+        <!-- 收益曲线图 -->
+        <div class="chart-card card">
+          <h3 class="section-title">收益走势</h3>
+          <div ref="lineChartRef" class="chart"></div>
+        </div>
+      </div>
+      
+      <!-- 风险指标 -->
+      <div class="risk-metrics card">
+        <h3 class="section-title">风险指标</h3>
+        <div class="metrics-grid">
+          <div class="metric-item">
+            <p>夏普比率</p>
+            <h3>{{ riskMetrics.sharpeRatio.toFixed(2) }}</h3>
+          </div>
+          <div class="metric-item">
+            <p>最大回撤</p>
+            <h3>{{ riskMetrics.maxDrawdown.toFixed(2) }}%</h3>
+          </div>
+          <div class="metric-item">
+            <p>波动率</p>
+            <h3>{{ riskMetrics.volatility.toFixed(2) }}%</h3>
+          </div>
+          <div class="metric-item">
+            <p>年化收益</p>
+            <h3>{{ riskMetrics.annualReturn.toFixed(2) }}%</h3>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -102,6 +142,7 @@
 import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { stockNameMap } from '@/utils/stockMap'; // 导入股票映射表
+import * as echarts from "echarts";
 
 export default {
   name: "Backtest",
@@ -117,6 +158,16 @@ export default {
       stockCode: '',
       action: 'buy',
       quantity: 100
+    });
+
+    const pieChartRef = ref(null);
+    const lineChartRef = ref(null);
+    const profitHistory = ref([]);
+    const riskMetrics = ref({
+      sharpeRatio: 0,
+      maxDrawdown: 0,
+      volatility: 0,
+      annualReturn: 0
     });
 
     // 验证股票代码/名称
@@ -153,12 +204,197 @@ export default {
       if (savedHoldings) {
         holdings.value = JSON.parse(savedHoldings);
       }
+
+      // 初始化图表
+      initPieChart();
+      initLineChart();
+      calculateRiskMetrics();
+      
+      // 监听窗口大小变化
+      window.addEventListener('resize', () => {
+        initPieChart();
+        initLineChart();
+      });
     });
 
     // 保存数据到本地存储
     const saveToStorage = () => {
       localStorage.setItem('backtest_account', JSON.stringify(account.value));
       localStorage.setItem('backtest_holdings', JSON.stringify(holdings.value));
+    };
+
+    // 初始化饼图
+    const initPieChart = () => {
+      if (!pieChartRef.value) return;
+      const chart = echarts.init(pieChartRef.value);
+      
+      const data = [
+        { name: '现金', value: account.value.availableCash },
+        ...holdings.value.map(h => ({
+          name: h.name,
+          value: h.quantity * h.currentPrice
+        }))
+      ];
+
+      const option = {
+        grid: {
+          left: '10%',
+          right: '10%',
+          top: '15%',
+          bottom: '10%',
+          containLabel: true
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter: '{b}: {c} ({d}%)'
+        },
+        series: [{
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '55%'],  // 调整饼图中心位置
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: true,
+            formatter: '{b}\n{d}%'
+          },
+          data: data
+        }]
+      };
+      
+      chart.setOption(option);
+    };
+
+    // 初始化折线图
+    const initLineChart = () => {
+      if (!lineChartRef.value) return;
+      const chart = echarts.init(lineChartRef.value);
+      
+      // 如果没有历史数据，创建一条持平的线
+      let dates, profits;
+      if (profitHistory.value.length === 0) {
+        const today = new Date();
+        dates = Array.from({length: 7}, (_, i) => {
+          const date = new Date(today);
+          date.setDate(date.getDate() - (6 - i));
+          return date.toISOString().split('T')[0];
+        });
+        profits = new Array(7).fill(0);  // 创建全为0的数组
+      } else {
+        dates = profitHistory.value.map(item => item.date);
+        profits = profitHistory.value.map(item => item.profit);
+      }
+
+      const option = {
+        grid: {
+          left: '10%',      // 左边距
+          right: '10%',     // 右边距
+          top: '15%',       // 上边距
+          bottom: '10%',    // 下边距
+          containLabel: true // 确保刻度标签在区域内
+        },
+        tooltip: {
+          trigger: 'axis',
+          formatter: '{b}<br/>收益率: {c}%'
+        },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          boundaryGap: false  // 让折线图从起点开始
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: {
+            formatter: '{value}%'
+          },
+          splitLine: {
+            show: true,
+            lineStyle: {
+              type: 'dashed'
+            }
+          }
+        },
+        series: [{
+          name: '收益率',
+          data: profits,
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',  // 数据点样式
+          symbolSize: 6,     // 数据点大小
+          itemStyle: {
+            color: '#409EFF'  // 线条颜色
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [{
+                offset: 0,
+                color: 'rgba(64,158,255,0.2)'
+              }, {
+                offset: 1,
+                color: 'rgba(64,158,255,0)'
+              }]
+            }
+          }
+        }]
+      };
+      
+      chart.setOption(option);
+    };
+
+    // 计算风险指标
+    const calculateRiskMetrics = () => {
+      if (profitHistory.value.length < 2) return;
+      
+      const profits = profitHistory.value.map(item => item.profit);
+      const returns = profits.map((p, i) => i > 0 ? p - profits[i-1] : 0);
+      
+      // 计算夏普比率
+      const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+      const stdDev = Math.sqrt(returns.reduce((a, b) => a + Math.pow(b - avgReturn, 2), 0) / returns.length);
+      riskMetrics.value.sharpeRatio = (avgReturn - 0.02) / stdDev; // 假设无风险利率为2%
+      
+      // 计算最大回撤
+      let maxDrawdown = 0;
+      let peak = profits[0];
+      for (const profit of profits) {
+        if (profit > peak) peak = profit;
+        const drawdown = (peak - profit) / peak * 100;
+        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+      }
+      riskMetrics.value.maxDrawdown = maxDrawdown;
+      
+      // 计算波动率
+      riskMetrics.value.volatility = stdDev * Math.sqrt(252) * 100; // 年化波动率
+      
+      // 计算年化收益
+      const totalReturn = profits[profits.length - 1];
+      const days = profitHistory.value.length;
+      riskMetrics.value.annualReturn = (Math.pow(1 + totalReturn/100, 365/days) - 1) * 100;
+    };
+
+    // 更新交易后的数据处理
+    const updateAfterTrade = () => {
+      // 更新收益历史
+      const today = new Date().toISOString().split('T')[0];
+      profitHistory.value.push({
+        date: today,
+        profit: account.value.profitRate
+      });
+      
+      // 更新图表和指标
+      initPieChart();
+      initLineChart();
+      calculateRiskMetrics();
+      saveToStorage();
     };
 
     // 处理交易提交
@@ -229,6 +465,8 @@ export default {
       
       ElMessage.success('交易成功');
       tradeForm.value.quantity = 100; // 重置表单
+
+      updateAfterTrade();
     };
 
     const sellAll = (stockCode) => {
@@ -246,6 +484,8 @@ export default {
 
       saveToStorage();
       ElMessage.success('清仓成功');
+
+      updateAfterTrade();
     };
 
     return {
@@ -254,7 +494,10 @@ export default {
       tradeForm,
       handleTrade,
       sellAll,
-      validateStock
+      validateStock,
+      pieChartRef,
+      lineChartRef,
+      riskMetrics
     };
   }
 };
@@ -395,5 +638,48 @@ export default {
 .btn-red:hover {
   background: linear-gradient(135deg, #ff4c4c, #e74c3c); /* 悬停时更深的渐变 */
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); /* 悬停时阴影 */
+}
+
+.analysis-section {
+  margin-top: 20px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.chart-card {
+  min-height: 400px;
+}
+
+.chart {
+  width: 100%;
+  height: 350px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  text-align: center;
+}
+
+.metric-item {
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.metric-item p {
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.metric-item h3 {
+  font-size: 1.5rem;
+  color: #334155;
 }
 </style>
