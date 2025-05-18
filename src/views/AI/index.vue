@@ -1,10 +1,8 @@
 <template>
   <div class="ai-container">
-    <div v-show="showChat" 
-         class="ai-chat-container"
-         ref="chatContainer"
-         :style="{ left: chatPosition.x + 'px', top: chatPosition.y + 'px' }">
-      <div class="chat-header" @mousedown.stop="startDragChat">
+    <div class="ai-chat-container"
+         ref="chatContainer">
+      <div class="chat-header">
         <div class="header-left">
           <h2>AI 助手</h2>
         </div>
@@ -15,9 +13,6 @@
             </div>
             <div class="ai-button" @click.stop="toggleVideo">
               <el-icon><VideoCamera /></el-icon>
-            </div>
-            <div class="ai-button" @click.stop="toggleChat">
-              <el-icon class="chat-icon"><ChatLineRound /></el-icon>
             </div>
             <div class="ai-button" @click.stop="playVideo">
               <el-icon><VideoCamera /></el-icon>
@@ -74,16 +69,6 @@
       <el-icon><VideoCamera /></el-icon>
     </div>
 
-    <!-- 悬浮按钮 -->
-    <div class="ai-float-button" 
-         ref="floatButton"
-         @mousedown.stop="startDragButton"
-         :style="{ left: buttonPosition.x + 'px', top: buttonPosition.y + 'px' }">
-      <el-icon class="chat-icon" @click.stop="toggleChat">
-        <Comment />
-      </el-icon>
-    </div>
-
     <!-- 隐藏的文件输入框 -->
     <input 
       type="file" 
@@ -112,7 +97,7 @@ export default {
   },
   data() {
     return {
-      showChat: false,
+      showChat: true, // 默认显示聊天
       showVideo: false,
       clickCount: 0,
       config: {
@@ -128,13 +113,9 @@ export default {
         ],
         videoList: []
       },
-      chatPosition: {
-        x: Math.min(window.innerWidth - 720, window.innerWidth - 720), // 考虑到容器宽度700px + padding
-        y: Math.min(20, window.innerHeight - 520) // 考虑到容器高度500px + padding
-      },
-      buttonPosition: {
-        x: window.innerWidth - 100,
-        y: window.innerHeight - 100
+      chatPosition: {  // 移除位置相关配置
+        x: 0,
+        y: 0
       },
       isDragging: false,
       dragTarget: null,
@@ -371,17 +352,24 @@ export default {
 @use '@/assets/theme' as theme;
 
 .ai-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: #2a3a5c;
-  .ai-chat-container {
-    position: fixed;
-    width: 700px;
-    height: 500px;
-    background-color: #2a3a5c; // 修改背景色为 #2a3a5c
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-    z-index: 800;
 
+  .ai-chat-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #2a3a5c;
+    border-radius: 0;
+    
     .chat-header {
       display: flex;
       justify-content: space-between;
@@ -622,39 +610,6 @@ export default {
       &:hover {
         background: #3a6cd8;
       }
-    }
-  }
-
-  .ai-float-button {
-    position: fixed;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: theme.$primary-gradient;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: move;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-    user-select: none;
-    
-    .chat-icon {
-      font-size: 10px;
-      color: #3a3ae6;
-      cursor: pointer;
-      width: 70%;
-      height: 70%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    &:hover {
-      transform: scale(1.1);
-      transition: all 0.3s ease;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     }
   }
 }

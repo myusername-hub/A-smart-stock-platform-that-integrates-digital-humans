@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import { ElMessage } from 'element-plus'
 
 export default {
   setup() {
@@ -17,17 +18,31 @@ export default {
 
     const handleSubmit = async () => {
       if (!formData.value.username || !formData.value.password) {
-        alert('请填写完整信息')
+        ElMessage.warning('请填写完整信息')
         return
       }
 
       loading.value = true
       try {
+        // 检查本地存储中是否有该用户
+        const users = JSON.parse(localStorage.getItem('users') || '[]')
+        const user = users.find(u => u.username === formData.value.username)
+        
+        if (!user) {
+          throw new Error('账号不存在，请先注册')
+        }
+        
+        if (user.password !== formData.value.password) {
+          throw new Error('密码错误')
+        }
+
+        // 登录成功
         await authStore.login(formData.value.username, formData.value.password)
+        ElMessage.success('登录成功')
         router.push('/')
       } catch (error) {
         console.error('登录失败:', error)
-        alert(error.message || '登录失败，请稍后重试')
+        ElMessage.error(error.message || '登录失败，请稍后重试')
       } finally {
         loading.value = false
       }
@@ -137,13 +152,16 @@ export default {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/theme' as theme;
 .signin-container {
-  min-height: calc(100vh - 60px); /* 减去导航栏高度 */
+  min-height: 100vh; // 修改这里，移除减去导航栏高度
+  background: linear-gradient(to bottom, 
+    #1a1f35 0%, 
+    #2a3a5c 50%,
+    #1a1f35 100%
+  ); // 修改渐变
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1f35 0%, #2a3a5c 100%);
   padding: 20px;
   position: relative;
   overflow: hidden;
