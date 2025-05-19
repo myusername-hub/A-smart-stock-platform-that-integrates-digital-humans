@@ -21,7 +21,15 @@ export default {
 
     const validStockData = computed(() => {
       if (!Array.isArray(stockData.value)) return []
-      return stockData.value.filter(stock => !stock?.message)
+      if (!searchQuery.value) return stockData.value.filter(stock => !stock?.message)
+      
+      const query = searchQuery.value.toLowerCase()
+      return stockData.value
+        .filter(stock => !stock?.message)
+        .filter(stock => 
+          stock.code.toLowerCase().includes(query) || 
+          stock.name.toLowerCase().includes(query)
+        )
     })
 
     const paginatedStockData = computed(() => {
@@ -82,18 +90,6 @@ export default {
       }
     }
 
-    const handleSearch = () => {
-      if (!searchQuery.value) {
-        fetchStockData()
-        return
-      }
-      const query = searchQuery.value.toUpperCase()
-      const filteredList = validStockData.value.filter(stock => 
-        stock.ts_code.includes(query) || getStockName(stock.ts_code).includes(query)
-      )
-      stockData.value = filteredList
-    }
-
     // 清理定时器
     onMounted(() => {
       fetchStockData()
@@ -118,8 +114,7 @@ export default {
       getStockName,
       nextPage,
       prevPage,
-      searchQuery,
-      handleSearch
+      searchQuery, // 保留搜索输入
     }
   }
 }
@@ -127,17 +122,14 @@ export default {
 
 <template>
   <div class="now-page">
-    <!-- 添加搜索栏 -->
     <div class="search-wrapper">
       <div class="search-bar">
         <input 
           v-model="searchQuery"
           type="text" 
-          placeholder="输入股票代码或名称查询" 
+          placeholder="输入股票代码或名称实时搜索" 
           class="search-input"
-          @keyup.enter="handleSearch"
         >
-        <button class="search-btn" @click="handleSearch">查询</button>
       </div>
     </div>
 
@@ -357,18 +349,5 @@ export default {
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   width: 300px;
-}
-
-.search-btn {
-  padding: 8px 15px;
-  background-color: #409eff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.search-btn:hover {
-  background-color: #66b1ff;
 }
 </style>
