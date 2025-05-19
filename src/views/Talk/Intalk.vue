@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'  // 添加 auth store
+import { ElMessage } from 'element-plus'     // 添加提示组件
 import { stockNameMap } from '@/utils/stockMap'
 
 const router = useRouter()
+const authStore = useAuthStore()  // 初始化 auth store
 const searchInput = ref('')
 const stockDiscussions = ref([])
 
@@ -43,11 +46,16 @@ const sortedStocks = computed(() => {
     .sort((a, b) => b.discussionCount - a.discussionCount)
 })
 
-// 跳转到具体讨论页
+// 修改跳转方法，添加登录验证
 const goToDiscussion = (code) => {
+  if (!authStore.user) {
+    ElMessage.warning('请先登录后查看讨论')
+    router.push('/login')
+    return
+  }
+  
   router.push({
-    name: 'talk',
-    params: { code }
+    path: `/talk/${code}`  // 修改为正确的路由路径
   })
 }
 

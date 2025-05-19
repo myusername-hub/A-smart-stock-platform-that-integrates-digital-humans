@@ -46,7 +46,8 @@ const routes = [
   {
     path: '/talk/:code',
     name: 'talk',
-    component: () => import('@/views/Talk/index.vue')
+    component: () => import('@/views/Talk/index.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/ai',

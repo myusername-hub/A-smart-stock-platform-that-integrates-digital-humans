@@ -1,16 +1,25 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
-import subprocess
+import json
+from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import time
 from threading import Thread
 
 app = Flask(__name__)
-# 简化CORS配置
-CORS(app)
+# 修改 CORS 配置
+CORS(app, supports_credentials=True, resources={
+    r"/*": {
+        "origins": ["http://localhost:5173"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "supports_credentials": True
+    }
+})
 
 # 定义需要获取数据的股票代码列表
 stock_codes = ["688111", "002230", "688777", "688375", "688169", "688120"]
@@ -18,6 +27,9 @@ stock_codes = ["688111", "002230", "688777", "688375", "688169", "688120"]
 # 修改数据目录路径
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, 'back', 'stock_two_years')  # 正确的相对路径
+
+# 修改用户数据存储路径为绝对路径
+USER_DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'users.json')
 
 def ensure_data_dir():
     """确保数据目录存在"""
@@ -121,10 +133,49 @@ def update_stock_data():
             print(f"更新数据时出错: {e}")
             time.sleep(60)  # 出错时等待1分钟后重试
 
-def init_app():
-    """初始化应用"""
-    update_thread = Thread(target=update_stock_data, daemon=True)
-    update_thread.start()
+def ensure_user_data():
+    """确保用户数据文件存在"""
+    try:
+        data_dir = os.path.dirname(USER_DATA_PATH)
+        os.makedirs(data_dir, exist_ok=True)
+        print(f"确保数据目录存在: {data_dir}")
+        
+        if not os.path.exists(USER_DATA_PATH):
+            with open(USER_DATA_PATH, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False)
+            os.chmod(USER_DATA_PATH, 0o666)  # 设置文件权限
+            print(f"创建用户数据文件: {USER_DATA_PATH}")
+    except Exception as e:
+        print(f"初始化用户数据失败: {str(e)}")
+        raise
+
+# 读取用户数据
+def load_users():
+    try:
+        if not os.path.exists(USER_DATA_PATH):
+            ensure_user_data()
+            return {}
+        with open(USER_DATA_PATH, 'r', encoding='utf-8') as f:
+            users = json.load(f)
+            print(f"成功加载用户数据，当前用户数: {len(users)}")
+            return users
+    except Exception as e:
+        print(f"读取用户数据失败: {str(e)}")
+        return {}
+
+# 保存用户数据
+def save_users(users):
+    try:
+        with open(USER_DATA_PATH, 'w', encoding='utf-8') as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
+        print("用户数据保存成功")
+    except Exception as e:
+        print(f"保存用户数据失败: {str(e)}")
+        raise
+
+# 配置 Flask session
+app.secret_key = 'your_secret_key_here'  # 请更改为复杂的密钥
+app.permanent_session_lifetime = timedelta(days=7)  # session过期时间
 
 @app.route('/')
 def index():
@@ -140,6 +191,147 @@ def index():
             "/api/stock_kline_data/<stock_code>": "获取指定股票的K线数据"
         }
     })
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    """用户注册接口"""
+    print("\n=== 开始处理注册请求 ===")
+    try:
+        # 确保数据目录和文件存在
+        ensure_user_data()
+        
+        # 获取和验证请求数据
+        data = request.get_json()
+        print(f"接收到的数据: {data}")
+        
+        if not data or not isinstance(data, dict):
+            print("请求数据无效")
+            return jsonify({
+                'status': 'error',
+                'message': '无效的请求数据'
+            }), 400
+
+        username = str(data.get('username', '')).strip()
+        password = str(data.get('password', '')).strip()
+        
+        print(f"用户名: {username}, 密码长度: {len(password)}")
+
+        if not username or not password:
+            print("用户名或密码为空")
+            return jsonify({
+                'status': 'error',
+                'message': '用户名和密码不能为空'
+            }), 400
+
+        try:
+            # 读取现有用户数据
+            users = {}
+            if os.path.exists(USER_DATA_PATH):
+                with open(USER_DATA_PATH, 'r', encoding='utf-8') as f:
+                    users = json.load(f)
+            
+            if username in users:
+                print(f"用户名已存在: {username}")
+                return jsonify({
+                    'status': 'error',
+                    'message': '用户名已存在'
+                }), 409
+
+            # 添加新用户
+            users[username] = {
+                'password': generate_password_hash(password),
+                'created_at': datetime.now().isoformat()
+            }
+
+            # 保存用户数据
+            with open(USER_DATA_PATH, 'w', encoding='utf-8') as f:
+                json.dump(users, f, ensure_ascii=False, indent=2)
+
+            # 设置会话
+            session['username'] = username
+            session.permanent = True
+
+            print(f"用户注册成功: {username}")
+            return jsonify({
+                'status': 'success',
+                'message': '注册成功',
+                'username': username
+            })
+
+        except Exception as e:
+            print(f"处理用户数据时出错: {str(e)}")
+            return jsonify({
+                'status': 'error',
+                'message': f'用户数据处理失败: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        print(f"注册过程出现错误: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'服务器错误: {str(e)}'
+        }), 500
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        users = load_users()
+        user = users.get(username)
+        
+        if not user or not check_password_hash(user['password'], password):
+            return jsonify({
+                'status': 'error',
+                'message': '用户名或密码错误'
+            }), 401
+            
+        session['username'] = username
+        session.permanent = True
+        
+        return jsonify({
+            'status': 'success',
+            'message': '登录成功',
+            'username': username
+        })
+    except Exception as e:
+        print(f"登录错误: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': '服务器错误'
+        }), 500
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.pop('username', None)
+    return jsonify({
+        'status': 'success',
+        'message': '退出登录成功'
+    })
+
+@app.route('/api/check_session', methods=['GET'])
+def check_session():
+    username = session.get('username')
+    if username:
+        return jsonify({
+            'status': 'success',
+            'message': '会话有效',
+            'username': username,
+            'isLoggedIn': True
+        })
+    return jsonify({
+        'status': 'error',
+        'message': '未登录',
+        'isLoggedIn': False
+    }), 401
+
+def init_app():
+    """初始化应用"""
+    ensure_user_data()
+    update_thread = Thread(target=update_stock_data, daemon=True)
+    update_thread.start()
 
 @app.route('/api/stock_data', methods=['GET'])
 @debug_route

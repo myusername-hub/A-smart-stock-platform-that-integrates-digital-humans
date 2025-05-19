@@ -2,12 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import { useUsersStore } from '@/store/users'
 import { ElMessage } from 'element-plus'
 
 export default {
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
+    const usersStore = useUsersStore()
     const formData = ref({
       username: '',
       password: '',
@@ -15,6 +17,9 @@ export default {
     })
     const loading = ref(false)
     const showIntro = ref(true)
+
+    // 初始化时加载数据
+    usersStore.initStore()
 
     const handleSubmit = async () => {
       if (!formData.value.username || !formData.value.password) {
@@ -24,21 +29,23 @@ export default {
 
       loading.value = true
       try {
-        // 检查本地存储中是否有该用户
-        const users = JSON.parse(localStorage.getItem('users') || '[]')
-        const user = users.find(u => u.username === formData.value.username)
+        // 先验证用户
+        await usersStore.validateLogin(
+          formData.value.username,
+          formData.value.password
+        )
         
-        if (!user) {
-          throw new Error('账号不存在，请先注册')
-        }
-        
-        if (user.password !== formData.value.password) {
-          throw new Error('密码错误')
+        // 保存记住的用户
+        if (formData.value.remember) {
+          localStorage.setItem('rememberedUser', JSON.stringify({
+            username: formData.value.username,
+            password: formData.value.password
+          }))
         }
 
-        // 登录成功
-        await authStore.login(formData.value.username, formData.value.password)
-        ElMessage.success('登录成功')
+        // 登录并更新状态
+        await authStore.login(formData.value.username)
+        ElMessage.success('登录成功！')
         router.push('/')
       } catch (error) {
         console.error('登录失败:', error)

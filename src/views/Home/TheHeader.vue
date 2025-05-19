@@ -32,36 +32,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 import "../../assets/iconfont.css"  // 添加图标引用
+import { ElMessage } from 'element-plus' // 引入 ElMessage 组件
 
 const router = useRouter()
+const authStore = useAuthStore()
 const searchQuery = ref('')
-const isLoggedIn = ref(false)
-const username = ref('')
+
+// 计算属性获取登录状态
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+const username = computed(() => authStore.currentUser)
 
 // 页面跳转
 const goToPage = (path) => {
   router.push(path)
 }
 
-// 检查登录状态
-const checkLoginStatus = () => {
-  const user = JSON.parse(localStorage.getItem('user'))
-  if (user && user.username) {
-    isLoggedIn.value = true
-    username.value = user.username
-  } else {
-    isLoggedIn.value = false
-    username.value = ''
-  }
-}
-
 // 用户注销
 const logout = () => {
-  localStorage.removeItem('user')
-  checkLoginStatus()
+  authStore.logout()
+  ElMessage.success('已退出登录')  // 添加提示消息
 }
 
 // 搜索功能
@@ -83,7 +76,7 @@ const handleKeyPress = (event) => {
 }
 
 onMounted(() => {
-  checkLoginStatus()
+  // 这里不再需要检查登录状态，因已由 auth store 管理
 })
 </script>
 

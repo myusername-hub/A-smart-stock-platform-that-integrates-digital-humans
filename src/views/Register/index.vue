@@ -2,58 +2,69 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import { useUsersStore } from '@/store/users'
 
 export default {
   name: 'Register',
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
+    const usersStore = useUsersStore()
     const formData = ref({
       username: '',
       password: '',
-      confirmPassword: '', // 添加确认密码字段
+      confirmPassword: '',
       remember: false
     })
     const loading = ref(false)
 
     const handleSubmit = async () => {
-      if (!formData.value.username || !formData.value.password) {
-        alert('请填写完整信息')
-        return
-      }
-
-      if (formData.value.password !== formData.value.confirmPassword) {
-        alert('两次输入的密码不一致')
-        return
-      }
-
-      if (formData.value.password.length < 6) {
-        alert('密码长度不能少于6位')
+      const validationErrors = validateForm(formData.value)
+      if (validationErrors) {
+        alert(validationErrors)
         return
       }
 
       loading.value = true
       try {
-        await authStore.register(formData.value.username, formData.value.password)
-        localStorage.setItem('fromRegister', 'true')
-        alert('注册成功，正在为您自动跳转到登录页面')
-        router.push('/login')
+        // 直接使用usersStore进行注册
+        await usersStore.addUser(formData.value.username, formData.value.password)
+        
+        if (formData.value.remember) {
+          // 保存登录信息
+          localStorage.setItem('rememberedUser', JSON.stringify({
+            username: formData.value.username,
+            password: formData.value.password
+          }))
+        }
+        
+        alert('注册成功！即将跳转到登录页面')
+        // 确保数据保存后再跳转
+        setTimeout(() => {
+          router.push('/login')
+        }, 500)
       } catch (error) {
         console.error('注册失败:', error)
-        let errorMessage = '注册失败：'
-        if (error.message === '用户已存在') {
-          errorMessage += '该用户名已被注册'
-        } else if (error.message.includes('password')) {
-          errorMessage += '密码格式不正确，请使用6-20位字符'
-        } else if (error.message.includes('username')) {
-          errorMessage += '用户名不合法，请使用3-20位字符'
-        } else {
-          errorMessage += '服务器错误，请稍后重试'
-        }
-        alert(errorMessage)
+        alert(error.message || '注册失败，请重试')
       } finally {
         loading.value = false
       }
+    }
+
+    const validateForm = (data) => {
+      if (!data.username || !data.password) {
+        return '请填写完整信息'
+      }
+      if (data.password !== data.confirmPassword) {
+        return '两次输入的密码不一致'
+      }
+      if (data.password.length < 6 || data.password.length > 20) {
+        return '密码长度必须在6-20位之间'
+      }
+      if (data.username.length < 3 || data.username.length > 20) {
+        return '用户名长度必须在3-20位之间'
+      }
+      return null
     }
 
     // 确保返回模板中使用的所有数据和方法
@@ -123,6 +134,7 @@ export default {
           type="submit" 
           :disabled="loading"
           :class="{ 'loading': loading }"
+          :title="loading ? '注册中' : '点击注册'"
         >
           {{ loading ? '注册中...' : '注册' }}
         </button>
@@ -144,6 +156,7 @@ export default {
     width: 100%;
     max-width: 420px;
     background: rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border-radius: 16px;
     padding: 40px;
@@ -174,7 +187,15 @@ export default {
 
       input[type="text"],
       input[type="password"] {
-        width: 100%;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        touch-action: manipulation;
+        -ms-touch-action: manipulation;
+        -webkit-user-select: none;
+        user-select: none;
+        width: -webkit-fill-available;
+        width: stretch;
         padding: 12px 16px;
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -265,6 +286,11 @@ export default {
           top: 50%;
           transform: translateY(-50%);
         }
+      }
+
+      &:focus-visible {
+        outline: 2px solid #64b3f4;
+        outline-offset: 2px;
       }
     }
   }
