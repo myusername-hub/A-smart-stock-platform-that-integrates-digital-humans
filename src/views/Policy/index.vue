@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage, ElDialog } from 'element-plus'
 
 const strategy = ref({
   description: '',
@@ -7,10 +8,14 @@ const strategy = ref({
   code: ''
 })
 
+const historyVisible = ref(false)
+const historyStrategies = ref([])
+
 // 保存策略
 const saveStrategy = (isPublic = false) => {
   const savedStrategy = {
     ...strategy.value,
+    id: Date.now(), // 添加唯一id
     isPublic,
     createTime: new Date().toISOString(),
     lastModified: new Date().toISOString()
@@ -21,7 +26,11 @@ const saveStrategy = (isPublic = false) => {
   savedStrategies.push(savedStrategy)
   localStorage.setItem('strategies', JSON.stringify(savedStrategies))
   
-  alert('策略保存成功！')
+  ElMessage({
+    message: '策略保存成功！',
+    type: 'success',
+    duration: 2000
+  })
 }
 
 // 添加参数
@@ -46,13 +55,49 @@ onMounted(() => {
     }
   }
 })
+
+// 加载历史策略
+const loadHistoryStrategies = () => {
+  historyStrategies.value = JSON.parse(localStorage.getItem('strategies') || '[]')
+  historyVisible.value = true
+}
+
+// 使用历史策略
+const useHistoryStrategy = (historicalStrategy) => {
+  strategy.value = {
+    description: historicalStrategy.description,
+    parameters: historicalStrategy.parameters,
+    code: historicalStrategy.code
+  }
+  historyVisible.value = false
+  ElMessage({
+    message: '策略加载成功！',
+    type: 'success'
+  })
+}
+
+// 删除历史策略
+const deleteStrategy = (e, strategy) => {
+  e.stopPropagation() // 阻止冒泡,避免触发选择策略
+  const savedStrategies = JSON.parse(localStorage.getItem('strategies') || '[]')
+  const index = savedStrategies.findIndex(item => item.id === strategy.id)
+  if (index > -1) {
+    savedStrategies.splice(index, 1)
+    localStorage.setItem('strategies', JSON.stringify(savedStrategies))
+    historyStrategies.value = savedStrategies
+    ElMessage({
+      message: '策略删除成功！',
+      type: 'success'
+    })
+  }
+}
 </script>
 
 <template>
   <div class="policy-container">
     <div class="header">
       <h2>我的策略</h2>
-      <button class="btn-green">新建一个策略</button>
+      <button class="btn-green" @click="loadHistoryStrategies">历史策略</button>
       <button class="btn-blue">回测历史记录</button>
     </div>
 
@@ -108,6 +153,29 @@ onMounted(() => {
       <button class="btn-blue" @click="saveStrategy(false)">保存并私有</button>
       <button class="btn-blue" @click="saveStrategy(true)">保存并公开</button>
     </div>
+
+    <!-- 历史策略对话框 -->
+    <el-dialog
+      v-model="historyVisible"
+      title="历史策略"
+      width="70%"
+    >
+      <div class="history-list">
+        <div v-for="item in historyStrategies" 
+             :key="item.id" 
+             class="history-item"
+        >
+          <div class="history-content" @click="useHistoryStrategy(item)">
+            <h4>{{ item.description || '未命名策略' }}</h4>
+            <p class="history-time">创建时间: {{ new Date(item.createTime).toLocaleString() }}</p>
+          </div>
+          <button class="delete-btn" @click="(e) => deleteStrategy(e, item)">
+            <i class="el-icon-delete"></i>
+            删除
+          </button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -318,6 +386,60 @@ onMounted(() => {
       &:hover {
         background: linear-gradient(135deg, #3182ce, #2b6cb0);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      }
+    }
+  }
+
+  .history-list {
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        border-color: #4299e1;
+        box-shadow: 0 2px 10px rgba(66, 153, 225, 0.2);
+        
+        .delete-btn {
+          opacity: 1;
+        }
+      }
+
+      .history-content {
+        flex: 1;
+        cursor: pointer;
+        
+        &:hover {
+          transform: translateX(5px);
+        }
+      }
+
+      .delete-btn {
+        opacity: 0;
+        padding: 8px 15px;
+        background: linear-gradient(135deg, #f56565, #e53e3e);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+
+        &:hover {
+          background: linear-gradient(135deg, #e53e3e, #c53030);
+          transform: scale(1.05);
+        }
+
+        i {
+          font-size: 14px;
+        }
       }
     }
   }
