@@ -228,12 +228,18 @@ export default {
       if (!pieChartRef.value) return;
       const chart = echarts.init(pieChartRef.value);
       
+      // 计算每个持仓的市值
+      const holdingsValue = holdings.value.map(h => ({
+        name: `${h.name}(${h.code})`,
+        value: Math.round(h.quantity * h.currentPrice * 100) / 100  // 保留两位小数
+      }));
+
       const data = [
-        { name: '现金', value: account.value.availableCash },
-        ...holdings.value.map(h => ({
-          name: h.name,
-          value: h.quantity * h.currentPrice
-        }))
+        { 
+          name: '现金', 
+          value: Math.round(account.value.availableCash * 100) / 100 
+        },
+        ...holdingsValue
       ];
 
       const option = {

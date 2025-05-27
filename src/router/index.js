@@ -56,7 +56,7 @@ const routes = [
   },
   {
     path: '/stock/:code',
-    name: 'stock',
+    name: 'StockDetail',
     component: () => import('@/views/StockDetail/index.vue')
   },
   {

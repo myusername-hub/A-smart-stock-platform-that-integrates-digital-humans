@@ -1,10 +1,12 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { fetchWithRetry } from '@/utils/api'
 import { stockNameMap } from '@/utils/stockMap'
 
 export default {
   setup() {
+    const router = useRouter()
     // 初始化为空数组
     const stockData = ref([])
     const loading = ref(false)
@@ -102,6 +104,15 @@ export default {
       return () => clearInterval(timer)
     })
 
+    // 添加跳转方法
+    const goToStockDetail = (stock) => {
+      router.push({
+        name: 'StockDetail',
+        params: { code: stock.code },
+        query: { name: stock.name }
+      })
+    }
+
     return {
       stockData,
       validStockData,
@@ -115,6 +126,8 @@ export default {
       nextPage,
       prevPage,
       searchQuery, // 保留搜索输入
+      fetchStockData, // 暴露刷新方法
+      goToStockDetail
     }
   }
 }
@@ -130,14 +143,26 @@ export default {
           placeholder="输入股票代码或名称实时搜索" 
           class="search-input"
         >
+        <button class="search-btn">
+          <i class="el-icon-search"></i>
+          搜索
+        </button>
       </div>
     </div>
 
     <div class="header">
+      <div class="header-placeholder"></div>
       <h2>实时行情</h2>
-      <div v-if="error" class="error-message">
-        {{ error }}
+      <div class="header-right">
+        <button class="refresh-btn" @click="fetchStockData" :disabled="loading">
+          <i class="el-icon-refresh" :class="{ 'is-loading': loading }"></i>
+          <span>刷新</span>
+        </button>
       </div>
+    </div>
+
+    <div v-if="error" class="error-message">
+      {{ error }}
     </div>
 
     <div v-if="loading && !stockData.length" class="loading">
@@ -171,7 +196,8 @@ export default {
 
       <div v-for="stock in paginatedStockData" 
            :key="stock.code" 
-           class="stock-row">
+           class="stock-row"
+           @click="goToStockDetail(stock)">
         <div>{{ stock.code }}</div>
         <div>{{ stock.name }}</div>
         <div>{{ stock.close?.toFixed(2) }}</div>
@@ -216,15 +242,27 @@ export default {
 }
 
 .header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   margin-bottom: 20px;
-  text-align: center;
+  padding: 0 20px;
+  gap: 20px;
+}
+
+.header-placeholder {
+  /* 用于占位，使标题居中 */
+  width: 100px;
 }
 
 .header h2 {
-  color: #171717;
-  font-size: 24px;
-  font-weight: bold;
-  display: inline-block;
+  text-align: center;
+  margin: 0;
+}
+
+.header-right {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .error-message {
@@ -265,6 +303,7 @@ export default {
   padding: 12px 8px;
   border: 1px solid #ebeef5;
   transition: background-color 0.2s ease;
+  cursor: pointer;
 }
 
 .stock-row:hover {
@@ -342,12 +381,97 @@ export default {
   margin-bottom: 20px;
   display: flex;
   gap: 10px;
+  align-items: center;
 }
 
 .search-input {
   padding: 8px 12px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border: 2px solid #dcdfe6;
+  border-radius: 5px;
   width: 300px;
+}
+
+.search-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #4299e1, #3182ce);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s;
+  height: 36px;
+}
+
+.search-btn:hover {
+  background: linear-gradient(135deg, #3182ce, #2b6cb0);
+  transform: scale(1.02);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 20px;
+  gap: 20px;
+}
+
+.header-placeholder {
+  /* 用于占位，使标题居中 */
+  width: 100px;
+}
+
+.header h2 {
+  text-align: center;
+  margin: 0;
+}
+
+.header-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.refresh-btn {
+  padding: 8px 15px 8px 10px;
+  background: linear-gradient(135deg, #38b2ac, #319795);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+  height: 36px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  justify-content: center;
+  min-width: 80px;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #319795, #2c7a7b);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.refresh-btn .is-loading {
+  animation: rotating 2s linear infinite;
+}
+
+@keyframes rotating {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

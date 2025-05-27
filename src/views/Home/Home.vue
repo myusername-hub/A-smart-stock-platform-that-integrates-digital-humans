@@ -15,8 +15,13 @@ export default {
       router.push(path)
     }
 
+    const goToAI = () => {
+      window.location.href = 'https://robot.chaoxing.com/coze?unitId=329528&robotId=bc58d329855745239915afa08c3cb47e'
+    }
+
     return {
-      goToPage
+      goToPage,
+      goToAI
     }
   }
 }
@@ -83,7 +88,8 @@ export default {
           </li>
         </ul>
         <div class="ai">
-          <a @click="goToPage('/ai')" class="iconfont icon-robot-3-line"></a>
+          <!-- 修改AI按钮，添加点击事件 -->
+          <a @click="goToAI" class="iconfont icon-robot-3-line"></a>
         </div>
       </div>
     </div>

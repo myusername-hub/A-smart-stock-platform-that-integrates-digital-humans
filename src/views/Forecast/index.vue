@@ -445,7 +445,7 @@ onUnmounted(() => {
       .search-button {
         min-width: 80px;
         height: 40px;
-        padding: 0 20px;
+        padding: 0 15px 0 10px;
         border-radius: 5px;
         font-size: 15px;
         font-weight: 500;
@@ -460,7 +460,7 @@ onUnmounted(() => {
 
         .search-icon {
           margin-right: 2px;
-          font-size: 16px;
+          font-size: 20px;
           display: flex;
           align-items: center;
         }
