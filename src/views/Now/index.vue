@@ -107,11 +107,25 @@ export default {
 
     // 添加跳转方法
     const goToStockDetail = (stock) => {
-      localStorage.setItem('currentStock', JSON.stringify(stock))
+      // 统一字段名和结构
+      const code = stock.code
+      const name = stock.name
+      const stockObj = {
+        code,
+        name,
+        price: Number(stock.close ?? stock.price),
+        change: Number(stock.change),
+        changeRate: Number(stock.pct_change ?? stock.changeRate),
+        preClose: stock.pre_close !== undefined ? Number(stock.pre_close) : '-',
+        open: Number(stock.open),
+        high: Number(stock.high),
+        low: Number(stock.low)
+      }
+      localStorage.setItem('currentStock', JSON.stringify(stockObj))
       router.push({
         name: 'StockDetail',
-        params: { code: stock.code },
-        query: { name: stock.name }
+        params: { code },
+        query: { name }
       })
     }
 

@@ -46,20 +46,36 @@ const fetchStockData = async () => {
   try {
     loading.value = true
     error.value = null
-    
-    const response = await fetchWithRetry('/api/stock_daily_data')
+    // 直接请求和实时行情页一样的接口
+    const response = await fetchWithRetry('/api/stock_data')
     console.log('原始数据:', response.data)
-    
     if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
-      const validData = response.data.data.filter(item => item.daily_data?.length > 0)
-      stockList.value = processStockData(validData)
+      // 只保留有数据的
+      const validData = response.data.data.filter(item => item.latest_data)
+      stockList.value = validData.map(item => {
+        const d = item.latest_data
+        return {
+          code: item.code,
+          name: d.name || stockNameMap[item.code] || '未知',
+          price: Number(d.close),
+          change: Number(d.change),
+          changeRate: Number(d.pct_change),
+          preClose: Number(d.pre_close),
+          open: Number(d.open),
+          high: Number(d.high),
+          low: Number(d.low),
+          volume: (Number(d.vol) / 10000).toFixed(2),
+          amount: (Number(d.amount) / 100000000).toFixed(2),
+          amplitude: d.high && d.low && d.close ? (((Number(d.high) - Number(d.low)) / Number(d.close)) * 100).toFixed(2) : '-'
+        }
+      })
       console.log('处理后数据:', stockList.value)
     } else {
       throw new Error('数据格式不正确')
     }
   } catch (err) {
     console.error('数据获取失败:', err)
-    error.value = '无法获取历史数据，请确保后端服务正常运行'
+    error.value = '无法获取数据，请确保后端服务正常运行'
     stockList.value = []
   } finally {
     loading.value = false
@@ -69,11 +85,26 @@ const fetchStockData = async () => {
 // 跳转到详情页
 const goToDetail = (code) => {
   const currentStock = stockList.value.find(item => item.code === code)
-  localStorage.setItem('currentStock', JSON.stringify(currentStock))
-  router.push({
-    name: 'StockDetail',
-    params: { code }
-  })
+  if (currentStock) {
+    // 统一字段名和结构
+    const stockObj = {
+      code: currentStock.code,
+      name: currentStock.name,
+      price: Number(currentStock.price),
+      change: Number(currentStock.change),
+      changeRate: Number(currentStock.changeRate),
+      preClose: currentStock.preClose !== undefined ? Number(currentStock.preClose) : '-',
+      open: Number(currentStock.open),
+      high: Number(currentStock.high),
+      low: Number(currentStock.low)
+    }
+    localStorage.setItem('currentStock', JSON.stringify(stockObj))
+    router.push({
+      name: 'StockDetail',
+      params: { code: currentStock.code },
+      query: { name: currentStock.name }
+    })
+  }
 }
 
 // 处理收藏
