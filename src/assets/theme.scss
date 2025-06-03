@@ -1,0 +1,83 @@
+@forward './scss/variables';
+@forward './scss/mixins';
+// 颜色变量
+$primary-gradient: #f7fafc;
+$primary-blue: #4299e1;
+$primary-blue-dark: #3182ce;
+$primary-green: #38b2ac;
+$primary-green-dark: #319795;
+$primary-red: #f56565;
+$primary-red-dark: #e53e3e;
+$text-primary: #2d3748;
+$text-secondary: #4a5568;
+$border-color: #e2e8f0;
+$shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+$primary-hover: #3a6cd8;
+
+// 字体变量
+$font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$font-family-code: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+
+// 混合器
+@mixin card {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: $shadow-sm;
+  padding: 20px;
+}
+
+@mixin button-base {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  font-family: $font-family-base;
+}
+
+@mixin button-blue {
+  @include button-base;
+  background: linear-gradient(135deg, $primary-blue, $primary-blue-dark);
+  &:hover {
+    background: linear-gradient(135deg, $primary-blue-dark, darken($primary-blue-dark, 10%));
+    box-shadow: $shadow-md;
+  }
+}
+
+@mixin button-green {
+  @include button-base;
+  background: linear-gradient(135deg, $primary-green, $primary-green-dark);
+  &:hover {
+    background: linear-gradient(135deg, $primary-green-dark, darken($primary-green-dark, 10%));
+    box-shadow: $shadow-md;
+  }
+}
+
+@mixin button-red {
+  @include button-base;
+  background: linear-gradient(135deg, $primary-red, $primary-red-dark);
+  &:hover {
+    background: linear-gradient(135deg, $primary-red-dark, darken($primary-red-dark, 10%));
+    box-shadow: $shadow-md;
+  }
+}
+
+@mixin input-base {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  background: #ffffff;
+  color: $text-primary;
+  font-family: $font-family-base;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+  
+  &:focus {
+    border-color: $primary-blue;
+    box-shadow: 0 0 0 3px rgba($primary-blue, 0.15);
+    outline: none;
+  }
+}

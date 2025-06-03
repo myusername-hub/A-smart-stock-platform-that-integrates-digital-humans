@@ -1,0 +1,45 @@
+@use 'variables' as *;
+
+@mixin card {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: $shadow-sm;
+  padding: 20px;
+}
+
+@mixin button-base {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  font-family: $font-family-base;
+}
+
+@mixin button-blue {
+  @include button-base;
+  background: linear-gradient(135deg, $primary-blue, $primary-blue-dark);
+  &:hover {
+    background: linear-gradient(135deg, $primary-blue-dark, darken($primary-blue-dark, 10%));
+    box-shadow: $shadow-md;
+  }
+}
+
+@mixin button-green {
+  @include button-base;
+  background: linear-gradient(135deg, $primary-green, $primary-green-dark);
+  &:hover {
+    background: linear-gradient(135deg, $primary-green-dark, darken($primary-green-dark, 10%));
+    box-shadow: $shadow-md;
+  }
+}
+
+@mixin button-red {
+  @include button-base;
+  background: linear-gradient(135deg, $primary-red, $primary-red-dark);
+  &:hover {
+    background: linear-gradient(135deg, $primary-red-dark, darken($primary-red-dark, 10%));
+    box-shadow: $shadow-md;
+  }
+}

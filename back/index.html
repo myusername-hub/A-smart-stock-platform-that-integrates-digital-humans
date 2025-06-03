@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票数据展示</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #1890ff;
+            color: white;
+            cursor: pointer;
+        }
+
+        .controls button:hover {
+            background-color: #40a9ff;
+        }
+
+        .update-btn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .update-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stock-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stock-card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .stock-info {
+            margin: 10px 0;
+        }
+
+        .stock-info div {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .price-up {
+            color: #f56c6c;
+        }
+
+        .price-down {
+            color: #4eb61b;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            margin: 20px 0;
+        }
+
+        .error {
+            color: #f56c6c;
+            text-align: center;
+            padding: 20px;
+            background: #fef0f0;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .last-update {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>股票实时数据</h1>
+    <div class="controls">
+        <button onclick="fetchData()">刷新数据</button>
+        <button onclick="useLocalData()">使用本地数据</button>
+        <button id="updateBtn" class="update-btn" onclick="updateStockData()">更新股票数据</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div id="loading" class="loading">数据加载中...</div>
+    <div id="error" class="error" style="display: none;"></div>
+    <div id="stock-container" class="stock-grid"></div>
+    <div class="last-update" id="lastUpdate"></div>
+
+    <script>
+        const stockContainer = document.getElementById('stock-container');
+        const loadingElement = document.getElementById('loading');
+        const errorElement = document.getElementById('error');
+        const statusElement = document.getElementById('status');
+        const lastUpdateElement = document.getElementById('lastUpdate');
+
+        // 本地测试数据
+        const localData = [
+            {
+                "ts_code": "688111",
+                "trade_date": "20250507",
+                "open": 50.20,
+                "high": 51.50,
+                "low": 49.80,
+                "close": 51.00,
+                "change": 0.80,
+                "pct_change": 1.59,
+                "vol": 1234567,
+                "amount": 6234567,
+                "amplitude": 3.38
+            },
+            {
+                "ts_code": "002230",
+                "trade_date": "20250507",
+                "open": 25.30,
+                "high": 26.20,
+                "low": 25.10,
+                "close": 26.00,
+                "change": 0.70,
+                "pct_change": 2.77,
+                "vol": 2345678,
+                "amount": 5987654,
+                "amplitude": 4.35
+            }
+        ];
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('zh-CN', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            }).format(num);
+        }
+
+        function formatVolume(vol) {
+            return new Intl.NumberFormat('zh-CN', {
+                maximumFractionDigits: 2,
+                notation: "compact",
+                compactDisplay: "short"
+            }).format(vol);
+        }
+
+        function getStockName(code) {
+            const stockNames = {
+                '688111': '金山办公',
+                '002230': '科大讯飞',
+                '688777': '中控技术',
+                '688375': '国博电子',
+                '688169': '石头科技',
+                '688120': '华海清科'
+            };
+            return stockNames[code] || code;
+        }
+
+        function createStockCard(stock) {
+            if (stock.message) {
+                // 处理错误情况
+                const card = document.createElement('div');
+                card.className = 'stock-card';
+                card.innerHTML = `
+                    <h2>${getStockName(stock.ts_code)} (${stock.ts_code})</h2>
+                    <div class="error">${stock.message}</div>
+                `;
+                return card;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'stock-card';
+            
+            const priceChangeClass = parseFloat(stock.pct_change) >= 0 ? 'price-up' : 'price-down';
+            const changeSymbol = parseFloat(stock.pct_change) >= 0 ? '+' : '';
+
+            card.innerHTML = `
+                <h2>${getStockName(stock.ts_code)} (${stock.ts_code})</h2>
+                <div class="stock-info">
+                    <div>
+                        <span>最新价：</span>
+                        <span class="${priceChangeClass}">${formatNumber(stock.close)}</span>
+                    </div>
+                    <div>
+                        <span>涨跌幅：</span>
+                        <span class="${priceChangeClass}">${changeSymbol}${formatNumber(stock.pct_change)}%</span>
+                    </div>
+                    <div>
+                        <span>涨跌额：</span>
+                        <span class="${priceChangeClass}">${changeSymbol}${formatNumber(stock.change)}</span>
+                    </div>
+                    <div>
+                        <span>今开：</span>
+                        <span>${formatNumber(stock.open)}</span>
+                    </div>
+                    <div>
+                        <span>最高：</span>
+                        <span>${formatNumber(stock.high)}</span>
+                    </div>
+                    <div>
+                        <span>最低：</span>
+                        <span>${formatNumber(stock.low)}</span>
+                    </div>
+                    <div>
+                        <span>成交量：</span>
+                        <span>${formatVolume(stock.vol)}</span>
+                    </div>
+                    <div>
+                        <span>成交额：</span>
+                        <span>${formatVolume(stock.amount)}</span>
+                    </div>
+                    <div>
+                        <span>振幅：</span>
+                        <span>${formatNumber(stock.amplitude)}%</span>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            lastUpdateElement.textContent = `最后更新时间：${now.toLocaleString()}`;
+        }
+
+        function displayData(data) {
+            loadingElement.style.display = 'none';
+            errorElement.style.display = 'none';
+            stockContainer.innerHTML = '';
+            
+            if (Array.isArray(data) && data.length > 0) {
+                data.forEach(stock => {
+                    stockContainer.appendChild(createStockCard(stock));
+                });
+                updateLastUpdateTime();
+            } else {
+                errorElement.style.display = 'block';
+                errorElement.textContent = '没有获取到有效的股票数据';
+            }
+        }
+
+        function useLocalData() {
+            statusElement.textContent = '使用本地测试数据';
+            displayData(localData);
+        }
+
+        async function fetchData() {
+            loadingElement.style.display = 'block';
+            errorElement.style.display = 'none';
+            stockContainer.innerHTML = '';
+            statusElement.textContent = '正在从服务器获取数据...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/stock_data');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                statusElement.textContent = '数据获取成功';
+                displayData(data);
+                
+            } catch (error) {
+                loadingElement.style.display = 'none';
+                errorElement.style.display = 'block';
+                errorElement.textContent = `获取数据出错: ${error.message}`;
+                statusElement.textContent = '获取数据失败';
+                console.error('获取数据出错:', error);
+            }
+        }
+
+        async function updateStockData() {
+            const button = document.getElementById('updateBtn');
+            button.disabled = true;
+            button.textContent = '正在更新...';
+
+            try {
+                const response = await fetch('http://localhost:5000/update_stock_data', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    // 刷新页面数据
+                    fetchData();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('更新数据失败：' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = '更新股票数据';
+            }
+        }
+
+        // 页面加载时尝试获取数据
+        fetchData();
+
+        // 每60秒自动刷新一次数据
+        setInterval(fetchData, 60000);
+    </script>
+</body>
+
+</html>
