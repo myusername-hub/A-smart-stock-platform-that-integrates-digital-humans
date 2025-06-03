@@ -18,25 +18,26 @@ const processStockData = (data) => {
   
   return data.map(stock => {
     const stockCode = stock.code
-    const stockInfo = stock.daily_data?.[0] || {}
+    const latest = stock.latest_data || {}
     
-    // 涨跌幅计算，使用原始数据中的pct_change字段
-    const price = parseFloat(stockInfo.close || 0)
-    const change = parseFloat(stockInfo.change || 0)
-    const changeRate = parseFloat(stockInfo.pct_change || 0) // 直接使用pct_change字段
-
+    // 处理数值，确保不会出现 NaN
+    const processNumber = (value) => {
+      const num = parseFloat(value)
+      return !isNaN(num) ? num.toFixed(2) : '0.00'
+    }
+    
     return {
       code: stockCode,
       name: stockNameMap[stockCode] || '未知',
-      price: price.toFixed(2),
-      change: change.toFixed(2),
-      changeRate: changeRate.toFixed(2), // 使用原始涨跌幅数据
-      open: parseFloat(stockInfo.open || 0).toFixed(2),
-      high: parseFloat(stockInfo.high || 0).toFixed(2),
-      low: parseFloat(stockInfo.low || 0).toFixed(2),
-      volume: `${(parseFloat(stockInfo.vol || 0) / 10000).toFixed(2)}`,
-      amount: `${(parseFloat(stockInfo.amount || 0) / 100000000).toFixed(2)}`,
-      amplitude: ((parseFloat(stockInfo.high || 0) - parseFloat(stockInfo.low || 0)) / price * 100).toFixed(2)
+      price: processNumber(latest.close),
+      change: processNumber(latest.change),
+      changeRate: processNumber(latest.pct_change),
+      open: processNumber(latest.open),
+      high: processNumber(latest.high),
+      low: processNumber(latest.low),
+      volume: `${(parseFloat(latest.vol || 0) / 10000).toFixed(2)}`,
+      amount: `${(parseFloat(latest.amount || 0) / 100000000).toFixed(2)}`,
+      amplitude: ((parseFloat(latest.high || 0) - parseFloat(latest.low || 0)) / parseFloat(latest.close || 1) * 100).toFixed(2)
     }
   })
 }
@@ -46,36 +47,36 @@ const fetchStockData = async () => {
   try {
     loading.value = true
     error.value = null
-    // 直接请求和实时行情页一样的接口
-    const response = await fetchWithRetry('/api/stock_data')
+    
+    // 优先使用本地缓存
+    const cachedData = localStorage.getItem('stockList')
+    const cacheTime = localStorage.getItem('stockListTime')
+    if (cachedData && cacheTime) {
+      // 如果缓存时间不超过1分钟，使用缓存数据
+      if (Date.now() - Number(cacheTime) < 60000) {
+        stockList.value = JSON.parse(cachedData)
+        loading.value = false
+        return
+      }
+    }
+    
+    // 请求最新数据
+    const response = await fetchWithRetry('/api/stock_data?refresh=1')
     console.log('原始数据:', response.data)
+    
     if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
-      // 只保留有数据的
-      const validData = response.data.data.filter(item => item.latest_data)
-      stockList.value = validData.map(item => {
-        const d = item.latest_data
-        return {
-          code: item.code,
-          name: d.name || stockNameMap[item.code] || '未知',
-          price: Number(d.close),
-          change: Number(d.change),
-          changeRate: Number(d.pct_change),
-          preClose: Number(d.pre_close),
-          open: Number(d.open),
-          high: Number(d.high),
-          low: Number(d.low),
-          volume: (Number(d.vol) / 10000).toFixed(2),
-          amount: (Number(d.amount) / 100000000).toFixed(2),
-          amplitude: d.high && d.low && d.close ? (((Number(d.high) - Number(d.low)) / Number(d.close)) * 100).toFixed(2) : '-'
-        }
-      })
+      stockList.value = processStockData(response.data.data)
       console.log('处理后数据:', stockList.value)
+      
+      // 更新缓存和缓存时间
+      localStorage.setItem('stockList', JSON.stringify(stockList.value))
+      localStorage.setItem('stockListTime', Date.now().toString())
     } else {
       throw new Error('数据格式不正确')
     }
   } catch (err) {
     console.error('数据获取失败:', err)
-    error.value = '无法获取数据，请确保后端服务正常运行'
+    error.value = '无法获取最新数据，请确保后端服务正常运行'
     stockList.value = []
   } finally {
     loading.value = false
@@ -83,26 +84,47 @@ const fetchStockData = async () => {
 }
 
 // 跳转到详情页
-const goToDetail = (code) => {
-  const currentStock = stockList.value.find(item => item.code === code)
-  if (currentStock) {
-    // 统一字段名和结构
-    const stockObj = {
-      code: currentStock.code,
-      name: currentStock.name,
-      price: Number(currentStock.price),
-      change: Number(currentStock.change),
-      changeRate: Number(currentStock.changeRate),
-      preClose: currentStock.preClose !== undefined ? Number(currentStock.preClose) : '-',
-      open: Number(currentStock.open),
-      high: Number(currentStock.high),
-      low: Number(currentStock.low)
+const goToDetail = async (code) => {
+  let currentStock = stockList.value.find(item => item.code === code)
+  
+  // 确保获取最新数据
+  try {
+    const response = await fetchWithRetry('/api/stock_data?refresh=1')
+    if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
+      const stockItem = response.data.data.find(item => item.code === code)
+      if (stockItem?.latest_data) {
+        const latest = stockItem.latest_data
+        // 处理数值，确保不会出现 NaN
+        const processNumber = (value) => {
+          const num = parseFloat(value)
+          return !isNaN(num) ? num.toFixed(2) : '0.00'
+        }
+        
+        currentStock = {
+          code,
+          name: stockNameMap[code] || '未知',
+          price: processNumber(latest.close),
+          change: processNumber(latest.change),
+          changeRate: processNumber(latest.pct_change),
+          open: processNumber(latest.open),
+          high: processNumber(latest.high),
+          low: processNumber(latest.low),
+          preClose: processNumber(latest.pre_close),
+          volume: `${(parseFloat(latest.vol || 0) / 10000).toFixed(2)}`,
+          amount: `${(parseFloat(latest.amount || 0) / 100000000).toFixed(2)}`,
+          amplitude: ((parseFloat(latest.high || 0) - parseFloat(latest.low || 0)) / parseFloat(latest.close || 1) * 100).toFixed(2)
+        }
+      }
     }
-    localStorage.setItem('currentStock', JSON.stringify(stockObj))
+  } catch (err) {
+    console.error('获取最新数据失败:', err)
+  }
+
+  if (currentStock) {
+    localStorage.setItem('currentStock', JSON.stringify(currentStock))
     router.push({
       name: 'StockDetail',
-      params: { code: currentStock.code },
-      query: { name: currentStock.name }
+      params: { code }
     })
   }
 }

@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 import os
 import json
@@ -11,10 +12,13 @@ from threading import Thread
 import subprocess
 
 app = Flask(__name__)
-# 修改 CORS 配置
-CORS(app, supports_credentials=True, resources={
+# 修改 CORS 配置，允许所有本地开发端口
+CORS(app, resources={
     r"/*": {
-        "origins": ["http://127.0.0.1:5500", "http://localhost:5173"],
+        "origins": [
+            "http://localhost:*",
+            "http://127.0.0.1:*"
+        ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "expose_headers": ["Content-Range", "X-Content-Range"],
@@ -90,16 +94,42 @@ def read_stock_data_from_csv(stock_code):
         # 确保日期列为datetime类型
         df['trade_date'] = pd.to_datetime(df['trade_date'], format='%Y%m%d')
         
-        # 按日期排序并获取最新的数据
+        # 按日期排序并获取最新的有效数据
         df = df.sort_values('trade_date', ascending=False)
-        latest_data = df.iloc[0].to_dict()
+        df = df.replace([np.inf, -np.inf], np.nan)  # 替换无限值为 NaN
         
+        # 获取第一个所有必需字段都有效的数据行
+        required_fields = ['close', 'open', 'high', 'low', 'pct_change', 'change']
+        latest_data = None
+        
+        for _, row in df.iterrows():
+            if not row[required_fields].isna().any():
+                latest_data = row.to_dict()
+                break
+        
+        if latest_data is None:
+            return None, f"股票{stock_code}没有有效的数据"
+            
         # 将日期转换回字符串格式
         latest_data['trade_date'] = latest_data['trade_date'].strftime('%Y%m%d')
+        
+        # 清理数据，确保数值字段为数值类型
+        numeric_fields = ['open', 'high', 'low', 'close', 'vol', 'amount', 'change', 'pct_change']
+        for field in numeric_fields:
+            if field in latest_data:
+                try:
+                    value = float(latest_data[field])
+                    if not np.isnan(value):
+                        latest_data[field] = value
+                    else:
+                        latest_data[field] = None
+                except (ValueError, TypeError):
+                    latest_data[field] = None
         
         return latest_data, None
         
     except Exception as e:
+        print(f"读取股票{stock_code}数据时出错: {str(e)}")
         return None, f"读取股票{stock_code}数据时出错: {str(e)}"
 
 def get_daily_stock_data(stock_code):

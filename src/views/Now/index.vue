@@ -64,20 +64,38 @@ export default {
       try {
         loading.value = true
         error.value = null
+        
         // 先请求后端更新数据
         await fetch('http://localhost:5000/update_stock_data', { method: 'POST' })
-        // 再拉取最新数据
+        
         console.log('开始获取数据...')
         const response = await fetchWithRetry('/api/stock_data?refresh=1')
         console.log('服务器响应:', response)
         if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
           stockData.value = response.data.data.map(item => {
-            const fullCode = item.code.padStart(6, '0') // 补全股票代码为6位
+            const latest = item.latest_data || {}
+            // 先转换为字符串，然后补全为6位
+            const code = String(latest.ts_code || item.code || '')
+            const fullCode = code.padStart(6, '0')
+
+            // 处理数值，确保不会出现 NaN
+            const processNumber = (value) => {
+              const num = parseFloat(value)
+              return !isNaN(num) ? num : null
+            }
+
             return {
-              ...item.latest_data,
               code: fullCode,
-              ts_code: fullCode,
-              name: stockNameMap[fullCode] || '未知'
+              name: stockNameMap[fullCode] || '未知',
+              close: processNumber(latest.close),
+              change: processNumber(latest.change),
+              pct_change: processNumber(latest.pct_change),
+              open: processNumber(latest.open),
+              high: processNumber(latest.high),
+              low: processNumber(latest.low),
+              pre_close: processNumber(latest.pre_close),
+              vol: processNumber(latest.vol),
+              amount: processNumber(latest.amount)
             }
           })
           console.log('处理后的数据:', stockData.value)
@@ -93,11 +111,11 @@ export default {
       }
     }
 
-    // 清理定时器
     onMounted(() => {
       fetchStockData()
+      // 每分钟自动刷新一次
       const timer = setInterval(() => {
-        if (!error.value) {  // 只在没有错误时继续请求
+        if (!error.value) {
           fetchStockData()
         }
       }, 60000)
@@ -105,27 +123,23 @@ export default {
       return () => clearInterval(timer)
     })
 
-    // 添加跳转方法
     const goToStockDetail = (stock) => {
-      // 统一字段名和结构
-      const code = stock.code
-      const name = stock.name
-      const stockObj = {
-        code,
-        name,
-        price: Number(stock.close ?? stock.price),
-        change: Number(stock.change),
-        changeRate: Number(stock.pct_change ?? stock.changeRate),
-        preClose: stock.pre_close !== undefined ? Number(stock.pre_close) : '-',
-        open: Number(stock.open),
-        high: Number(stock.high),
-        low: Number(stock.low)
+      const currentStock = {
+        code: stock.code,
+        name: stock.name,
+        close: stock.close !== undefined ? String(Number(stock.close).toFixed(2)) : '-',
+        change: stock.change !== undefined ? String(Number(stock.change).toFixed(2)) : '0',
+        pct_change: stock.pct_change !== undefined ? String(Number(stock.pct_change).toFixed(2)) : '0',
+        open: stock.open !== undefined ? String(Number(stock.open).toFixed(2)) : '-',
+        high: stock.high !== undefined ? String(Number(stock.high).toFixed(2)) : '-',
+        low: stock.low !== undefined ? String(Number(stock.low).toFixed(2)) : '-',
+        pre_close: stock.pre_close !== undefined ? String(Number(stock.pre_close).toFixed(2)) : '-'
       }
-      localStorage.setItem('currentStock', JSON.stringify(stockObj))
+
+      localStorage.setItem('currentStock', JSON.stringify(currentStock))
       router.push({
         name: 'StockDetail',
-        params: { code },
-        query: { name }
+        params: { code: stock.code }
       })
     }
 
@@ -141,8 +155,8 @@ export default {
       getStockName,
       nextPage,
       prevPage,
-      searchQuery, // 保留搜索输入
-      fetchStockData, // 暴露刷新方法
+      searchQuery,
+      fetchStockData,
       goToStockDetail
     }
   }
@@ -216,14 +230,14 @@ export default {
            @click="goToStockDetail(stock)">
         <div>{{ stock.code }}</div>
         <div>{{ stock.name }}</div>
-        <div>{{ stock.close?.toFixed(2) }}</div>
-        <div :class="[stock.change >= 0 ? 'price-up' : 'price-down']">
-          {{ stock.change?.toFixed(2) }}
+        <div>{{ stock.close !== null ? stock.close.toFixed(2) : '-' }}</div>
+        <div :class="[stock.pct_change >= 0 ? 'price-up' : 'price-down']">
+          {{ stock.pct_change !== null ? stock.pct_change.toFixed(2) + '%' : '-' }}
         </div>
-        <div>{{ stock.open?.toFixed(2) }}</div>
-        <div>{{ stock.high?.toFixed(2) }}</div>
-        <div>{{ stock.low?.toFixed(2) }}</div>
-        <div>{{ stock.pre_close?.toFixed(2) }}</div>
+        <div>{{ stock.open !== null ? stock.open.toFixed(2) : '-' }}</div>
+        <div>{{ stock.high !== null ? stock.high.toFixed(2) : '-' }}</div>
+        <div>{{ stock.low !== null ? stock.low.toFixed(2) : '-' }}</div>
+        <div>{{ stock.pre_close !== null ? stock.pre_close.toFixed(2) : '-' }}</div>
       </div>
 
       <div class="pagination">

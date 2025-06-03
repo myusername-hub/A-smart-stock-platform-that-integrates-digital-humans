@@ -73,35 +73,104 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import axios from 'axios'
 
 const router = useRouter()
-const stockData = ref(JSON.parse(localStorage.getItem('currentStock')))
-
-// 使用真实数据
+const route = useRoute()
+const stockData = ref(null)
 const priceInfo = ref({
-  currentPrice: stockData.value?.price || '-',
-  changeRate: stockData.value?.changeRate || 0,
-  prevClose: stockData.value?.preClose || '-',
-  openPrice: stockData.value?.open || '-',
-  highPrice: stockData.value?.high || '-',
-  lowPrice: stockData.value?.low || '-'
+  currentPrice: '-',
+  changeRate: '0',
+  prevClose: '-',
+  openPrice: '-',
+  highPrice: '-',
+  lowPrice: '-'
 })
 
-// 交易记录数据（如果没有实时数据，则显示为空）
-const tradeList = ref([])
+// 获取最新数据
+const fetchLatestData = async (code) => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/daily_data/${code}`)
+    const data = await response.json()
+    
+    if (data.status === 'success' && data.data?.daily_data?.length > 0) {
+      const latest = data.data.daily_data[0]
+      stockData.value = {
+        code,
+        name: stockNameMap[code] || '未知',
+        close: latest.close,
+        change: latest.change,
+        pct_change: latest.pct_change,
+        open: latest.open,
+        high: latest.high,
+        low: latest.low,
+        pre_close: latest.pre_close
+      }
+      
+      // 更新价格信息
+      updatePriceInfo()
+      
+      // 更新本地存储
+      localStorage.setItem('currentStock', JSON.stringify(stockData.value))
+    }
+  } catch (error) {
+    console.error('获取最新数据失败:', error)
+  }
+}
+
+// 更新价格信息
+const updatePriceInfo = () => {
+  if (!stockData.value) return
+  
+  priceInfo.value = {
+    currentPrice: stockData.value.close ? Number(stockData.value.close).toFixed(2) : '-',
+    changeRate: stockData.value.pct_change ? Number(stockData.value.pct_change).toFixed(2) : '0',
+    prevClose: stockData.value.pre_close ? Number(stockData.value.pre_close).toFixed(2) : '-',
+    openPrice: stockData.value.open ? Number(stockData.value.open).toFixed(2) : '-',
+    highPrice: stockData.value.high ? Number(stockData.value.high).toFixed(2) : '-',
+    lowPrice: stockData.value.low ? Number(stockData.value.low).toFixed(2) : '-'
+  }
+}
+
+// 初始化时加载数据
+onMounted(async () => {
+  const code = route.params.code
+  if (code) {
+    // 先尝试从本地存储获取
+    const cached = localStorage.getItem('currentStock')
+    if (cached) {
+      stockData.value = JSON.parse(cached)
+      updatePriceInfo()
+    }
+    // 获取最新数据
+    await fetchLatestData(code)
+  }
+})
+
+// 监听路由变化
+watch(
+  () => route.params.code,
+  async (newCode) => {
+    if (newCode) {
+      await fetchLatestData(newCode)
+    }
+  }
+)
 
 // K线周期选项
 const periods = [
-  { label: '年K', value: 'year' },  // 调整顺序，把年K放在最前面
+  { label: '年K', value: 'year' },
   { label: '月K', value: 'month' },
   { label: '周K', value: 'week' },
   { label: '日K', value: 'day' }
 ]
-const currentPeriod = ref('year')  // 修改默认值为'year'
+const currentPeriod = ref('year')
+
+// 交易记录数据
+const tradeList = ref([])
 
 // 在 fetchKLineData 函数前添加周K数据处理函数
 const processWeekKLineData = (dailyData) => {
@@ -309,6 +378,16 @@ const goToTalk = () => {
     params: { code: stockData.value.code }
   })
 }
+
+// 监听路由变化，强制刷新 priceInfo
+watch(
+  () => route.params.code,
+  () => {
+    const newStock = JSON.parse(localStorage.getItem('currentStock'))
+    stockData.value = newStock
+    updatePriceInfo()
+  }
+)
 
 onMounted(() => {
   updateChart()

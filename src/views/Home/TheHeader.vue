@@ -72,6 +72,7 @@ import { useAuthStore } from '@/store/auth'
 import "../../assets/iconfont.css"  // 添加图标引用
 import { ElMessage } from 'element-plus' // 引入 ElMessage 组件
 import { stockNameMap } from '@/utils/stockMap'
+import { fetchWithRetry } from '@/utils/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -126,37 +127,73 @@ const addToHistory = (query) => {
 }
 
 // 处理搜索
-const handleSearch = (query = searchQuery.value) => {
+const handleSearch = async (query = searchQuery.value) => {
   if (!query.trim()) {
     ElMessage.warning('请输入股票代码或名称')
     return
   }
-  // 查找股票对象
-  let code = query.split(' ')[0]
-  let name = ''
-  if (stockNameMap[code]) {
-    name = stockNameMap[code]
-  } else {
-    // 支持用名称查找
-    const found = Object.entries(stockNameMap).find(([c, n]) => n === query.trim())
-    if (found) {
-      code = found[0]
-      name = found[1]
+  // 支持"代码 名称"或"名称 代码"输入
+  const queryLower = query.toLowerCase()
+  let code = '', name = ''
+  for (const [c, n] of Object.entries(stockNameMap)) {
+    // 确保股票代码是6位数字
+    const paddedCode = String(c).padStart(6, '0')
+    if (paddedCode === query || n === query || queryLower.includes(paddedCode) || queryLower.includes(n.toLowerCase())) {
+      code = paddedCode
+      name = n
+      break
     }
   }
-  if (!code || !stockNameMap[code]) {
-    ElMessage.warning('未找到该股票')
+  if (!code) {
+    ElMessage.error('未找到该股票')
     return
   }
+  
+  // 获取最新股票数据
+  let stockList = []
+  try {
+    stockList = JSON.parse(localStorage.getItem('stockList') || '[]')
+  } catch {}
+  let currentStock = stockList.find(item => item.code === code)
+
+  if (!currentStock) {
+    // 若本地无，获取最新数据
+    try {
+      const response = await fetchWithRetry('/api/stock_data?refresh=1')
+      if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
+        const stockItem = response.data.data.find(item => item.code === code)
+        if (stockItem?.latest_data) {
+          const latest = stockItem.latest_data
+          // 处理数值，确保不会出现 NaN
+          const processNumber = (value) => {
+            const num = parseFloat(value)
+            return !isNaN(num) ? num.toFixed(2) : '0.00'
+          }
+          
+          currentStock = {
+            code,
+            name: stockNameMap[code] || '未知',
+            price: processNumber(latest.close),
+            change: processNumber(latest.change),
+            changeRate: processNumber(latest.pct_change),
+            open: processNumber(latest.open),
+            high: processNumber(latest.high),
+            low: processNumber(latest.low),
+            preClose: processNumber(latest.pre_close)
+          }
+        }
+      }
+    } catch {}
+  }
+  
+  if (!currentStock) {
+    currentStock = { code, name }
+  }
+  
+  localStorage.setItem('currentStock', JSON.stringify(currentStock))
   addToHistory(query)
   showSuggestions.value = false
-  // 存储完整对象
-  localStorage.setItem('currentStock', JSON.stringify({ code, name }))
-  router.push({
-    name: 'StockDetail',
-    params: { code },
-    query: { name }
-  })
+  router.push(`/stock/${code}`)
 }
 
 // 清空搜索历史
@@ -166,16 +203,51 @@ const clearHistory = () => {
 }
 
 // 选择建议项
-const selectSuggestion = (code, name) => {
+const selectSuggestion = async (code, name) => {
+  let stockList = []
+  try {
+    stockList = JSON.parse(localStorage.getItem('stockList') || '[]')
+  } catch {}
+  let currentStock = stockList.find(item => item.code === code)
+
+  if (!currentStock) {
+    // 若本地无，获取最新数据
+    try {
+      const response = await fetchWithRetry('/api/stock_data?refresh=1')
+      if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
+        const stockItem = response.data.data.find(item => item.code === code)
+        if (stockItem?.latest_data) {
+          const latest = stockItem.latest_data
+          // 处理数值，确保不会出现 NaN
+          const processNumber = (value) => {
+            const num = parseFloat(value)
+            return !isNaN(num) ? num.toFixed(2) : '0.00'
+          }
+          
+          currentStock = {
+            code,
+            name: stockNameMap[code] || '未知',
+            price: processNumber(latest.close),
+            change: processNumber(latest.change),
+            changeRate: processNumber(latest.pct_change),
+            open: processNumber(latest.open),
+            high: processNumber(latest.high),
+            low: processNumber(latest.low),
+            preClose: processNumber(latest.pre_close)
+          }
+        }
+      }
+    } catch {}
+  }
+
+  if (!currentStock) {
+    currentStock = { code, name }
+  }
+
+  localStorage.setItem('currentStock', JSON.stringify(currentStock))
   addToHistory(`${code} ${name}`)
   showSuggestions.value = false
-  // 存储完整对象
-  localStorage.setItem('currentStock', JSON.stringify({ code, name }))
-  router.push({
-    name: 'StockDetail',
-    params: { code },
-    query: { name }
-  })
+  router.push(`/stock/${code}`)
 }
 
 // 关闭建议框
@@ -187,6 +259,79 @@ onMounted(() => {
     }
   })
 })
+
+// 处理股票选择
+const handleStockSelect = async (code, name) => {
+  if (!code) return
+  
+  // 如果本地已有数据且不超过1分钟，直接使用
+  let currentStock = null
+  try {
+    const cachedData = localStorage.getItem('currentStock')
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData)
+      const cacheTime = localStorage.getItem('currentStockTime')
+      if (cacheTime && Date.now() - Number(cacheTime) < 60000) {
+        if (parsed.code === code) {
+          currentStock = parsed
+        }
+      }
+    }
+  } catch {}
+
+  if (!currentStock) {
+    // 获取最新数据
+    try {
+      const response = await fetchWithRetry('/api/stock_data?refresh=1')
+      if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
+        const stockItem = response.data.data.find(item => item.code === code)
+        if (stockItem?.latest_data) {
+          const latest = stockItem.latest_data
+          // 处理数值，确保不会出现 NaN
+          const processNumber = (value) => {
+            const num = parseFloat(value)
+            return !isNaN(num) ? num : null
+          }
+          
+          currentStock = {
+            code,
+            name: stockNameMap[code] || '未知',
+            close: processNumber(latest.close),
+            change: processNumber(latest.change),
+            pct_change: processNumber(latest.pct_change),
+            open: processNumber(latest.open),
+            high: processNumber(latest.high),
+            low: processNumber(latest.low),
+            pre_close: processNumber(latest.pre_close)
+          }
+          
+          // 只保存有效数据
+          Object.keys(currentStock).forEach(key => {
+            if (currentStock[key] === null || isNaN(currentStock[key])) {
+              delete currentStock[key]
+            } else if (typeof currentStock[key] === 'number') {
+              currentStock[key] = currentStock[key].toFixed(2)
+            }
+          })
+          
+          localStorage.setItem('currentStock', JSON.stringify(currentStock))
+          localStorage.setItem('currentStockTime', Date.now().toString())
+        }
+      }
+    } catch (err) {
+      console.error('获取股票数据失败:', err)
+    }
+  }
+
+  // 如果没有获取到数据，至少保存代码和名称
+  if (!currentStock) {
+    currentStock = { code, name }
+  }
+
+  localStorage.setItem('currentStock', JSON.stringify(currentStock))
+  showSuggestions.value = false
+  router.push(`/stock/${code}`)
+}
 </script>
 
 <style scoped lang="scss">

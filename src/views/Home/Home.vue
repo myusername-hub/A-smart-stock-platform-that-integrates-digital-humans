@@ -1,7 +1,6 @@
 <script>
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 import "../../assets/iconfont.css"
 import TheHeader from './TheHeader.vue'
 
@@ -11,47 +10,6 @@ export default {
   },
   setup() {
     const router = useRouter()
-    const searchQuery = ref('')
-    const allStocks = ref([])
-
-    onMounted(async () => {
-      try {
-        const res = await axios.get('http://localhost:5000/api/stock_data')
-        if (res.data?.status === 'success' && Array.isArray(res.data.data)) {
-          allStocks.value = res.data.data
-            .filter(item => item.latest_data)
-            .map(item => ({
-              ...item.latest_data,
-              code: item.code,
-              name: item.latest_data.name || item.code
-            }))
-        }
-      } catch (e) {
-        console.error('获取股票数据失败', e)
-      }
-    })
-
-    const handleSearch = () => {
-      if (!searchQuery.value) {
-        alert('请输入股票代码或名称')
-        return
-      }
-      const result = allStocks.value.find(
-        stock =>
-          stock.code === searchQuery.value.trim() ||
-          stock.name === searchQuery.value.trim()
-      )
-      if (result) {
-        localStorage.setItem('currentStock', JSON.stringify(result))
-        router.push({
-          name: 'StockDetail',
-          params: { code: result.code },
-          query: { name: result.name }
-        })
-      } else {
-        alert('未找到该股票')
-      }
-    }
 
     const goToPage = (path) => {
       router.push(path)
@@ -63,9 +21,7 @@ export default {
 
     return {
       goToPage,
-      goToAI,
-      searchQuery,
-      handleSearch
+      goToAI
     }
   }
 }
@@ -101,7 +57,7 @@ export default {
               <p class="title">
                 <i class="iconfont icon-gupiao"></i>股票走势预测
               </p>
-              <span class="body">采用深度学习模型:引入注意力机制的双向LSTM模型对股票价格变化进行精准预测。</span>
+              <span class="body">基于FA优化的CNN-LSTM-XGBoost预测模型。</span>
               <a @click="goToPage('/infore')">点击进入 ></a>
             </div>
           </li>
